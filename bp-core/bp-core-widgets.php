@@ -13,7 +13,7 @@ add_action( 'plugins_loaded', 'bp_core_register_widgets' );
 
 class BP_Core_Welcome_Widget extends WP_Widget {
 	function bp_core_welcome_widget() {
-		parent::WP_Widget( false, $name = 'Welcome' );
+		parent::WP_Widget( false, $name = __( 'Welcome', 'buddypress' ) );
 	}
 
 	function widget($args, $instance) {
