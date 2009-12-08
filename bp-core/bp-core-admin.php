@@ -92,7 +92,7 @@ function bp_core_admin_settings() {
 						<input type="radio" name="bp-admin[bp-disable-account-deletion]"<?php if ( !(int)get_site_option( 'bp-disable-account-deletion' ) || '' == get_site_option( 'bp-disable-account-deletion' ) ) : ?> checked="checked"<?php endif; ?> id="bp-disable-account-deletion" value="0" /> <?php _e( 'No', 'buddypress' ) ?>
 					</td>
 				</tr>
-				<?php if ( function_exists( 'bp_forums_setup') ) : ?>
+				<?php if ( function_exists( 'bp_forums_setup' ) ) : ?>
 				<tr>
 					<th scope="row"><?php _e( 'Disable global forum directory?', 'buddypress' ) ?>:</th>
 					<td>
@@ -102,7 +102,11 @@ function bp_core_admin_settings() {
 				</tr>
 				<?php endif; ?>
 
-				<?php $themes = bp_core_get_buddypress_themes() ?>
+				<?php 
+					/* Check if deprecated function exists, if so get themes */
+					if ( function_exists( 'bp_core_get_buddypress_themes' ) )
+						$themes = bp_core_get_buddypress_themes();
+				?>
 				<?php if ( $themes ) : ?>
 					<tr>
 						<th scope="row"><?php _e('Select theme to use for BuddyPress generated pages', 'buddypress' ) ?>:</th>
