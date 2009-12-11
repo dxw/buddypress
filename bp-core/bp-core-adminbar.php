@@ -228,7 +228,10 @@ function bp_adminbar_authors_menu() {
 			echo '</a>';
 
 			echo '<ul class="author-list">';
+			$counter = 0;
 			foreach( $authors as $author ) {
+				if ( $counter > 30 ) break;
+
 				$author = new BP_Core_User( $author->user_id );
 				echo '<li>';
 
@@ -242,6 +245,8 @@ function bp_adminbar_authors_menu() {
 			}
 			echo '</ul>';
 			echo '</li>';
+
+			$counter++;
 		}
 	}
 }
