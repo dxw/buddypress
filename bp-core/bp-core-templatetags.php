@@ -295,7 +295,7 @@ function bp_last_activity( $user_id = false, $echo = true ) {
 function bp_user_link() {
 	global $bp;
 
-	echo apply_filters( 'bp_the_avatar_thumbnail', $bp->displayed_user->domain );
+	echo apply_filters( 'bp_user_link', $bp->displayed_user->domain );
 }
 
 function bp_get_loggedin_user_link() {
