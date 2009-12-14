@@ -1206,8 +1206,13 @@ function bp_user_fullname() {
 	global $bp;
 	echo apply_filters( 'bp_user_fullname', $bp->displayed_user->fullname );
 }
-	function bp_displayed_user_fullname() {
-		return bp_user_fullname();
+
+function bp_displayed_user_fullname() {
+	echo bp_get_displayed_user_fullname();
+}
+	function bp_get_displayed_user_fullname() {
+		global $bp;
+		echo apply_filters( 'bp_get_displayed_user_fullname', $bp->displayed_user->fullname );
 	}
 
 function bp_loggedin_user_fullname() {
