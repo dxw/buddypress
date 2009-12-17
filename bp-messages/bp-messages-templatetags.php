@@ -504,6 +504,10 @@ class BP_Messages_Thread_Template {
 
 		$this->thread = new BP_Messages_Thread( $thread_id, true );
 		$this->message_count = count( $this->thread->messages );
+
+		/* Allow to reverse messages based on $order */
+		if ( $order == 'DESC' )
+			$this->thread->messages = array_reverse( $this->thread->messages );
 	}
 
 	function has_messages() {
