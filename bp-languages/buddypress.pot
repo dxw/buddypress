@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: BuddyPress \n"
 "Report-Msgid-Bugs-To: wp-polyglots@lists.automattic.com\n"
-"POT-Creation-Date: 2010-03-15 15:21+0000\n"
+"POT-Creation-Date: 2010-04-13 08:43+0000\n"
 "PO-Revision-Date: 2010-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -48,6 +48,8 @@ msgstr ""
 #: bp-blogs/bp-blogs-templatetags.php:505
 #: bp-blogs/bp-blogs-templatetags.php:1208
 #: bp-core/bp-core-templatetags.php:929 bp-core/bp-core-widgets.php:90
+#: bp-forums/bp-forums-templatetags.php:358
+#: bp-forums/bp-forums-templatetags.php:572
 #: bp-friends/bp-friends-templatetags.php:291
 #: bp-friends/bp-friends-templatetags.php:303
 #: bp-groups/bp-groups-templatetags.php:1065
@@ -595,6 +597,7 @@ msgid "MonsterID (Generated)"
 msgstr ""
 
 #: bp-core/bp-core-admin.php:132 bp-core/bp-core-admin.php:263
+#: bp-forums/bp-forums-admin.php:114
 msgid "Save Settings"
 msgstr ""
 
@@ -1358,7 +1361,9 @@ msgstr ""
 msgid "Create Account"
 msgstr ""
 
-#: bp-core/bp-core-widgets.php:51 bp-themes/bpmember/groups/forum/index.php:73
+#: bp-core/bp-core-widgets.php:51 bp-forums/bp-forums-bbpress-live.php:166
+#: bp-forums/bp-forums-bbpress-live.php:370
+#: bp-themes/bpmember/groups/forum/index.php:73
 #: bp-themes/bpskeletonmember/groups/forum/index.php:84
 msgid "Title:"
 msgstr ""
@@ -1404,6 +1409,186 @@ msgstr ""
 
 #: bp-core/bp-core-widgets.php:225
 msgid "There are no recently active members"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:7 bp-forums/bp-forums-admin.php:54
+msgid "Forums Setup"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:58
+msgid "Settings Saved."
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:65
+msgid ""
+"To enable forums for each group in a BuddyPress installation, you must first "
+"download, install, and setup bbPress and integrate it with WordPress MU."
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:66
+msgid ""
+"Once you have bbPress set up correctly, enter the options below so that "
+"BuddyPress can connect."
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:73
+msgid "bbPress URL"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:76
+msgid ""
+"The URL of the location you installed bbPress. For example, http://example."
+"com/forums/"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:80
+msgid "bbPress username"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:83
+msgid ""
+"The username for the user (with admin rights) that you created for "
+"BuddyPress integration"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:87
+msgid "bbPress password"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:90
+msgid ""
+"The password for the user (with admin rights) that you created for "
+"BuddyPress integration"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:95
+msgid "Cache requests"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:98
+msgid "Caching enabled"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:101
+msgid "Turn on caching of requests to reduce latency and load."
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:105
+msgid "Cache timeout"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:107
+msgid "(seconds)"
+msgstr ""
+
+#: bp-forums/bp-forums-admin.php:108
+msgid "The amount of time in seconds that a cached request is valid for."
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:20
+msgid "Forum lists from your bbPress forums"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:36
+#: bp-forums/bp-forums-bbpress-live.php:44
+msgid "bbPress Forum list"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:89 bp-groups.php:267
+#: bp-groups.php:1653 bp-themes/bpmember/groups/forum/index.php:25
+#: bp-themes/bpmember/groups/forum/topic.php:28
+#: bp-themes/bpmember/groups/forum/topic.php:40
+#: bp-themes/bpskeletonmember/groups/forum/index.php:29
+#: bp-themes/bpskeletonmember/groups/forum/topic.php:33
+#: bp-themes/bpskeletonmember/groups/forum/topic.php:45
+msgid "Forum"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:90
+msgid "Topics"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:91
+#: bp-forums/bp-forums-bbpress-live.php:292
+msgid "Posts"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:172
+msgid "Parent forum id or slug (optional):"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:178
+msgid "Hierarchy depth:"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:184
+#: bp-forums/bp-forums-bbpress-live.php:388
+msgid "Layout style:"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:188
+#: bp-forums/bp-forums-bbpress-live.php:392
+msgid "ordered list"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:193
+#: bp-forums/bp-forums-bbpress-live.php:397
+msgid "table"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:221
+msgid "The latest topics from your bbPress forums"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:237
+#: bp-forums/bp-forums-bbpress-live.php:245
+msgid "bbPress latest topics"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:282
+#, php-format
+msgid "%1$s posted %2$s ago"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:291
+msgid "Topic"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:293
+msgid "Last Poster"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:294
+msgid "Freshness"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:376
+msgid "Forum id or slug (optional):"
+msgstr ""
+
+#: bp-forums/bp-forums-bbpress-live.php:382
+msgid "Number of topics to show:"
+msgstr ""
+
+#: bp-forums/bp-forums-templatetags.php:283
+#, php-format
+msgid "%d post"
+msgstr ""
+
+#: bp-forums/bp-forums-templatetags.php:285
+#, php-format
+msgid "%d posts"
+msgstr ""
+
+#: bp-forums/bp-forums-templatetags.php:356
+#, php-format
+msgid "Viewing topic %d to %d (%d total topics)"
+msgstr ""
+
+#: bp-forums/bp-forums-templatetags.php:570
+#: bp-wire/bp-wire-templatetags.php:248
+#, php-format
+msgid "Viewing post %d to %d (%d total posts)"
 msgstr ""
 
 #: bp-friends.php:95
@@ -1629,16 +1814,6 @@ msgstr ""
 #: bp-themes/bpmember/groups/request-membership.php:22
 #: bp-themes/bpskeletonmember/groups/request-membership.php:31
 msgid "Request Membership"
-msgstr ""
-
-#: bp-groups.php:267 bp-groups.php:1653
-#: bp-themes/bpmember/groups/forum/index.php:25
-#: bp-themes/bpmember/groups/forum/topic.php:28
-#: bp-themes/bpmember/groups/forum/topic.php:40
-#: bp-themes/bpskeletonmember/groups/forum/index.php:29
-#: bp-themes/bpskeletonmember/groups/forum/topic.php:33
-#: bp-themes/bpskeletonmember/groups/forum/topic.php:45
-msgid "Forum"
 msgstr ""
 
 #: bp-groups.php:270 bp-wire.php:45 bp-wire/bp-wire-templatetags.php:146
@@ -3908,11 +4083,6 @@ msgstr ""
 
 #: bp-wire/bp-wire-templatetags.php:143
 msgid "There are currently no wire posts."
-msgstr ""
-
-#: bp-wire/bp-wire-templatetags.php:248
-#, php-format
-msgid "Viewing post %d to %d (%d total posts)"
 msgstr ""
 
 #: bp-xprofile.php:175 bp-xprofile/bp-xprofile-admin.php:36
