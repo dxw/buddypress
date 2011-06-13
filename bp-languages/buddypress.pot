@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: BuddyPress \n"
 "Report-Msgid-Bugs-To: wp-polyglots@lists.automattic.com\n"
-"POT-Creation-Date: 2010-12-20 22:27:53+00:00\n"
+"POT-Creation-Date: 2011-06-13 13:31:00+00:00\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3376,14 +3376,10 @@ msgstr ""
 msgid "The page you are looking for either does not exist, or you do not have the permissions to access it."
 msgstr ""
 
-#. The ID of the user to get the activity stream for.
-
 #: bp-themes/bpskeletonmember/activity/my-friends.php:37
 #: bp-themes/bpmember/activity/my-friends.php:23
 msgid "My Friends Activity"
 msgstr ""
-
-#. The title of the activity stream.
 
 #: bp-themes/bpskeletonmember/activity/my-friends.php:38
 #: bp-themes/bpmember/activity/my-friends.php:42
