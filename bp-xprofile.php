@@ -1,6 +1,5 @@
 <?php
 
-define ( 'BP_XPROFILE_VERSION', '1.0' );
 define ( 'BP_XPROFILE_DB_VERSION', '1300' );
 
 /* Define the slug for the component */
@@ -576,7 +575,7 @@ function xprofile_format_notifications( $action, $item_id, $secondary_item_id, $
 		if ( (int)$total_items > 1 ) {
 			return apply_filters( 'bp_xprofile_multiple_new_wire_post_notification', '<a href="' . $bp->loggedin_user->domain . $bp->wire->slug . '" title="' . __( 'Wire', 'buddypress' ) . '">' . sprintf( __( 'You have %d new posts on your wire', 'buddypress' ), (int)$total_items ) . '</a>', $total_items );		
 		} else {
-			$user_fullname = bp_core_global_user_fullname( $item_id );
+			$user_fullname = bp_core_get_user_displayname( $item_id );
 			return apply_filters( 'bp_xprofile_single_new_wire_post_notification', '<a href="' . $bp->loggedin_user->domain . $bp->wire->slug . '" title="' . __( 'Wire', 'buddypress' ) . '">' . sprintf( __( '%s posted on your wire', 'buddypress' ), $user_fullname ) . '</a>', $user_fullname );
 		}
 	}
@@ -615,7 +614,7 @@ function xprofile_edit( $group_id, $action ) {
 ?>
 	<div class="wrap">
 		
-		<h2><?php echo $group->name ?> <?php _e("Information", 'buddypress') ?></h2>
+		<h2><?php echo attribute_escape( $group->name ) ?> <?php _e("Information", 'buddypress') ?></h2>
 		
 		<?php
 			// If this group has fields then continue
@@ -743,7 +742,7 @@ function xprofile_edit( $group_id, $action ) {
 					$message = __('Changes saved.', 'buddypress');
 					
 					// Record in activity stream
-					xprofile_record_activity( array( 'item_id' => $group->id, 'component_name' => 'profile', 'component_action' => 'updated_profile', 'is_private' => 0 ) );
+					xprofile_record_activity( array( 'item_id' => $group->id, 'component_name' => $bp->profile->slug, 'component_action' => 'updated_profile', 'is_private' => 0 ) );
 					
 					do_action( 'xprofile_updated_profile', $group->id ); 
 				}
@@ -774,7 +773,7 @@ function xprofile_edit( $group_id, $action ) {
 			if ( $field_ids )
 				$field_ids = implode( ",", $field_ids );
 		?>
-		<input type="hidden" name="field_ids" id="field_ids" value="<?php echo $field_ids; ?>" />
+		<input type="hidden" name="field_ids" id="field_ids" value="<?php echo attribute_escape( $field_ids ); ?>" />
 		
 		<?php echo $list_html; ?>
 

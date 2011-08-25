@@ -31,6 +31,9 @@ function groups_widget_groups_list($args) {
 		. $after_title; ?>
 
 	<?php 
+	if ( empty( $options['max_groups'] ) || !$options['max_groups'] )
+		$options['max_groups'] = 5;
+		
 	if ( !$groups = wp_cache_get( 'popular_groups', 'bp' ) ) {
 		$groups = groups_get_popular( $options['max_groups'], 1 );
 		wp_cache_set( 'popular_groups', $groups, 'bp' );
@@ -40,9 +43,9 @@ function groups_widget_groups_list($args) {
 	<?php if ( $groups['groups'] ) : ?>
 		<div class="item-options" id="groups-list-options">
 			<img id="ajax-loader-groups" src="<?php echo $bp->groups->image_base ?>/ajax-loader.gif" height="7" alt="<?php _e( 'Loading', 'buddypress' ) ?>" style="display: none;" /> 
-			<a href="<?php echo site_url() . '/groups' ?>" id="newest-groups"><?php _e("Newest", 'buddypress') ?></a> | 
-			<a href="<?php echo site_url() . '/groups' ?>" id="recently-active-groups"><?php _e("Active", 'buddypress') ?></a> | 
-			<a href="<?php echo site_url() . '/groups' ?>" id="popular-groups" class="selected"><?php _e("Popular", 'buddypress') ?></a>
+			<a href="<?php echo site_url() . '/' . $bp->groups->slug ?>" id="newest-groups"><?php _e("Newest", 'buddypress') ?></a> | 
+			<a href="<?php echo site_url() . '/' . $bp->groups->slug ?>" id="recently-active-groups"><?php _e("Active", 'buddypress') ?></a> | 
+			<a href="<?php echo site_url() . '/' . $bp->groups->slug ?>" id="popular-groups" class="selected"><?php _e("Popular", 'buddypress') ?></a>
 		</div>
 		<ul id="groups-list" class="item-list">
 			<?php foreach ( $groups['groups'] as $group_id ) : ?>
@@ -54,11 +57,11 @@ function groups_widget_groups_list($args) {
 				?>
 				<li>
 					<div class="item-avatar">
-						<a href="<?php echo bp_get_group_permalink( $group ) ?>" title="<?php echo $group->name ?>"><img src="<?php echo $group->avatar_thumb; ?>" alt="<?php echo $group->name ?> Avatar" class="avatar" /></a>
+						<a href="<?php echo bp_get_group_permalink( $group ) ?>" title="<?php echo bp_get_group_name( $group ) ?>"><?php echo bp_get_group_avatar_thumb( $group ); ?></a>
 					</div>
 
 					<div class="item">
-						<div class="item-title"><a href="<?php echo bp_get_group_permalink( $group ) ?>" title="<?php echo $group->name ?>"><?php echo $group->name ?></a></div>
+						<div class="item-title"><a href="<?php echo bp_get_group_permalink( $group ) ?>" title="<?php echo bp_get_group_name( $group ) ?>"><?php echo bp_get_group_name( $group ) ?></a></div>
 						<div class="item-meta">
 						<span class="activity">
 							<?php 
@@ -79,7 +82,7 @@ function groups_widget_groups_list($args) {
 			wp_nonce_field( 'groups_widget_groups_list', '_wpnonce-groups' );
 		?>
 		
-		<input type="hidden" name="groups_widget_max" id="groups_widget_max" value="<?php echo $options['max_groups'] ?>" />
+		<input type="hidden" name="groups_widget_max" id="groups_widget_max" value="<?php echo attribute_escape( $options['max_groups'] ); ?>" />
 		
 	<?php else: ?>
 		<div class="widget-error">
@@ -105,9 +108,8 @@ function groups_widget_groups_list_control() {
 		update_blog_option( $current_blog->blog_id, 'groups_widget_groups_list', $options );
 	}
 
-	$max_groups = attribute_escape( $options['max_groups'] );
 ?>
-		<p><label for="groups-widget-groups-list-max"><?php _e('Maximum number of groups to show:', 'buddypress'); ?><br /> <input class="widefat" id="groups-widget-groups-list-max" name="groups-widget-groups-list-max" type="text" value="<?php echo $max_groups; ?>" style="width: 30%" /></label></p>
+		<p><label for="groups-widget-groups-list-max"><?php _e('Maximum number of groups to show:', 'buddypress'); ?><br /> <input class="widefat" id="groups-widget-groups-list-max" name="groups-widget-groups-list-max" type="text" value="<?php echo attribute_escape( $options['max_groups'] ); ?>" style="width: 30%" /></label></p>
 		<input type="hidden" id="groups-widget-groups-list-submit" name="groups-widget-groups-list-submit" value="1" />
 <?php
 }

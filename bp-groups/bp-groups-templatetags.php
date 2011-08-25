@@ -56,13 +56,13 @@ function bp_group_create_form() {
 	<?php switch( (int) $create_group_step ) {
 		case 1: ?>
 			<label for="group-name">* <?php _e('Group Name', 'buddypress') ?></label>
-			<input type="text" name="group-name" id="group-name" value="<?php echo ( $group_obj ) ? $group_obj->name : $_POST['group-name']; ?>" />
+			<input type="text" name="group-name" id="group-name" value="<?php echo attribute_escape( ( $group_obj ) ? $group_obj->name : $_POST['group-name'] ); ?>" />
 		
 			<label for="group-desc">* <?php _e('Group Description', 'buddypress') ?></label>
-			<textarea name="group-desc" id="group-desc"><?php echo ( $group_obj ) ? $group_obj->description : $_POST['group-desc']; ?></textarea>
+			<textarea name="group-desc" id="group-desc"><?php echo htmlspecialchars( ( $group_obj ) ? $group_obj->description : $_POST['group-desc'] ); ?></textarea>
 		
 			<label for="group-news"><?php _e('Recent News', 'buddypress') ?></label>
-			<textarea name="group-news" id="group-news"><?php echo ( $group_obj ) ? $group_obj->news : $_POST['group-news']; ?></textarea>
+			<textarea name="group-news" id="group-news"><?php echo htmlspecialchars( ( $group_obj ) ? $group_obj->news : $_POST['group-news'] ); ?></textarea>
 			
 			<?php do_action( 'groups_custom_group_fields_editable' ) ?>
 			
@@ -232,7 +232,7 @@ function bp_group_list_invite_friends() {
 							}
 					?>
 					
-					<li><input<?php echo $checked ?> type="checkbox" name="friends[]" id="f-<?php echo $friends[$i]['id'] ?>" value="<?php echo $friends[$i]['id'] ?>" /> <?php echo $friends[$i]['full_name']; ?></li>
+					<li><input<?php echo $checked ?> type="checkbox" name="friends[]" id="f-<?php echo $friends[$i]['id'] ?>" value="<?php echo attribute_escape( $friends[$i]['id'] ); ?>" /> <?php echo $friends[$i]['full_name']; ?></li>
 					<?php } ?>
 				</ul>
 			</div>
@@ -273,7 +273,7 @@ function bp_group_current_avatar() {
 	global $group_obj;
 	
 	if ( $group_obj->avatar_full ) { ?>
-		<img src="<?php echo $group_obj->avatar_full ?>" alt="<?php _e( 'Group Avatar', 'buddypress' ) ?>" class="avatar" />
+		<img src="<?php echo attribute_escape( $group_obj->avatar_full ) ?>" alt="<?php _e( 'Group Avatar', 'buddypress' ) ?>" class="avatar" />
 	<?php } else { ?>
 		<img src="<?php echo $bp->groups->image_base . '/none.gif' ?>" alt="<?php _e( 'No Group Avatar', 'buddypress' ) ?>" class="avatar" />
 	<?php }
@@ -306,11 +306,11 @@ function bp_groups_random_selection( $total_groups = 5 ) {
 			?>	
 			<li>
 				<div class="item-avatar">
-					<a href="<?php echo bp_get_group_permalink( $group ) ?>" title="<?php echo $group->name ?>"><img src="<?php echo $group->avatar_thumb ?>" class="avatar" alt="<?php printf( __( '%s Avatar', 'buddypress' ), $group->name ) ?>" /></a>
+					<a href="<?php echo bp_get_group_permalink( $group ) ?>" title="<?php echo bp_get_group_name( $group ) ?>"><?php echo get_group_avatar_thumb( $group ) ?></a>
 				</div>
 
 				<div class="item">
-					<div class="item-title"><a href="<?php echo bp_get_group_permalink( $group ) ?>" title="<?php echo $group->name ?>"><?php echo $group->name ?></a></div>
+					<div class="item-title"><a href="<?php echo bp_get_group_permalink( $group ) ?>" title="<?php echo bp_get_group_name( $group ) ?>"><?php echo bp_get_group_name( $group ) ?></a></div>
 					<div class="item-meta"><span class="activity"><?php echo bp_core_get_last_activity( groups_get_groupmeta( $group->id, 'last_activity' ), __( 'active %s ago', 'buddypress' ) ) ?></span></div>
 					<div class="item-meta desc"><?php echo bp_create_excerpt( $group->description ) ?></div>
 				</div>
@@ -360,8 +360,8 @@ function bp_groups_random_groups( $total_groups = 5 ) {
 					wp_cache_set( 'groups_group_nouserdata_' . $group_ids[$i], $group, 'bp' );
 				}
 			?>				<li>
-					<a href="<?php echo bp_get_group_permalink( $group ) ?>"><img src="<?php echo $group->avatar_thumb; ?>" class="avatar" alt="<?php _e( 'Group Avatar', 'buddypress' ) ?>" /></a>
-					<h5><a href="<?php echo bp_get_group_permalink( $group ) ?>"><?php echo $group->name ?></a></h5>
+					<a href="<?php echo bp_get_group_permalink( $group ) ?>"><img src="<?php echo attribute_escape( $group->avatar_thumb ); ?>" class="avatar" alt="<?php _e( 'Group Avatar', 'buddypress' ) ?>" /></a>
+					<h5><a href="<?php echo bp_get_group_permalink( $group ) ?>"><?php echo attribute_escape( $group->name ) ?></a></h5>
 				</li>
 			<?php } ?>
 			</ul>
@@ -705,7 +705,7 @@ function bp_group_avatar() {
 		if ( !$group )
 			$group =& $groups_template->group;
 
-		return apply_filters( 'bp_get_group_avatar', '<img src="' . $group->avatar_full . '" class="avatar" alt="' . $group->name . '" />', $group->avatar_full, $group->avatar_name );
+		return apply_filters( 'bp_get_group_avatar', '<img src="' . attribute_escape( $group->avatar_full ) . '" class="avatar" alt="' . attribute_escape( $group->name ) . '" />', $group->avatar_full, $group->avatar_name );
 	}
 
 function bp_group_avatar_thumb() {
@@ -717,7 +717,7 @@ function bp_group_avatar_thumb() {
 		if ( !$group )
 			$group =& $groups_template->group;
 
-		return apply_filters( 'bp_get_group_avatar_thumb', '<img src="' . $group->avatar_thumb . '" class="avatar" alt="' . $group->name . '" />', $group->avatar_thumb, $group->avatar_name );
+		return apply_filters( 'bp_get_group_avatar_thumb', '<img src="' . attribute_escape( $group->avatar_thumb ) . '" class="avatar" alt="' . attribute_escape( $group->name ) . '" />', $group->avatar_thumb, $group->avatar_name );
 	}
 
 function bp_group_avatar_mini() {
@@ -729,7 +729,7 @@ function bp_group_avatar_mini() {
 		if ( !$group )
 			$group =& $groups_template->group;
 
-		return apply_filters( 'bp_get_group_avatar_mini', '<img src="' . $group->avatar_thumb . '" class="avatar" width="30" height="30" alt="' . $group->name . '" />', $group->avatar_thumb, $group->avatar_name );
+		return apply_filters( 'bp_get_group_avatar_mini', '<img src="' . attribute_escape( $group->avatar_thumb ) . '" class="avatar" width="30" height="30" alt="' . attribute_escape( $group->name ) . '" />', $group->avatar_thumb, $group->avatar_name );
 	}
 
 function bp_group_last_active( $deprecated = true, $deprecated2 = false ) {
@@ -944,7 +944,7 @@ function bp_group_list_mods( $full_list = true, $group = false ) {
 			<ul id="group-mods" class="mods-list">
 			<?php for ( $i = 0; $i < count($group_mods); $i++ ) { ?>
 				<li>
-					<a href="<?php echo bp_core_get_userlink( $group_mods[$i]->user_id, false, true ) ?>" title="<?php echo bp_fetch_user_fullname( $group_mods[$i]->user->user_id ) ?>"><?php echo bp_core_get_avatar( $group_mods[$i]->user_id, 1, 50, 50 ) ?></a>
+					<a href="<?php echo bp_core_get_userlink( $group_mods[$i]->user_id, false, true ) ?>" title="<?php echo bp_core_get_user_displayname( $group_mods[$i]->user->user_id ) ?>"><?php echo bp_core_get_avatar( $group_mods[$i]->user_id, 1, 50, 50 ) ?></a>
 					<h5><?php echo bp_core_get_userlink( $group_mods[$i]->user_id ) ?></h5>
 					<span class="activity"><?php _e( 'Group Mod', 'buddypress' ) ?></span>
 					<div class="clear"></div>
@@ -1467,7 +1467,7 @@ function bp_group_reject_invite_link( $deprecated = false ) {
 	}
 
 function bp_group_leave_confirm_link( $deprecated = false ) {
-	echo bp_group_leave_confirm_link();
+	echo bp_get_group_leave_confirm_link();
 }
 	function bp_get_group_leave_confirm_link( $group = false ) {
 		global $groups_template, $bp;
@@ -1512,7 +1512,7 @@ function bp_group_send_invite_form( $group = false ) {
 		<h4><?php _e( 'Select Friends', 'buddypress' ) ?> <img id="ajax-loader" src="<?php echo $bp->groups->image_base ?>/ajax-loader.gif" height="7" alt="Loading" style="display: none;" /></h4>
 		<?php bp_group_list_invite_friends() ?>
 		<?php wp_nonce_field( 'groups_invite_uninvite_user', '_wpnonce_invite_uninvite_user' ) ?>
-		<input type="hidden" name="group_id" id="group_id" value="<?php echo $group->id ?>" />
+		<input type="hidden" name="group_id" id="group_id" value="<?php echo attribute_escape( $group->id ) ?>" />
 	</div>
 
 	<div class="main-column">
@@ -1771,7 +1771,7 @@ function bp_group_member_name() {
 	function bp_get_group_member_name() {
 		global $members_template;
 
-		return apply_filters( 'bp_get_group_member_name', bp_fetch_user_fullname( $members_template->member->user_id, false ) );
+		return apply_filters( 'bp_get_group_member_name', bp_core_get_user_displayname( $members_template->member->user_id ) );
 	}
 
 function bp_group_member_url() {

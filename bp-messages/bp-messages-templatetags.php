@@ -283,9 +283,9 @@ function bp_messages_username_value() {
 	echo bp_get_messages_username_value();
 }
 	function bp_get_messages_username_value() {
-		if ( isset( $_SESSION['send_to'] ) ) {
-			return apply_filters( 'bp_get_messages_username_value', $_SESSION['send_to'] );
-		} else if ( isset( $_GET['r'] ) && !isset( $_SESSION['send_to'] ) ) {
+		if ( isset( $_COOKIE['bp_messages_send_to'] ) ) {
+			return apply_filters( 'bp_get_messages_username_value', $_COOKIE['bp_messages_send_to'] );
+		} else if ( isset( $_GET['r'] ) && !isset( $_COOKIE['bp_messages_send_to'] ) ) {
 			return apply_filters( 'bp_get_messages_username_value', $_GET['r'] );
 		}
 	}
@@ -294,14 +294,14 @@ function bp_messages_subject_value() {
 	echo bp_get_messages_subject_value();
 }
 	function bp_get_messages_subject_value() {
-		return apply_filters( 'bp_get_messages_subject_value', $_SESSION['subject'] );
+		return apply_filters( 'bp_get_messages_subject_value', $_COOKIE['bp_messages_subject'] );
 	}
 
 function bp_messages_content_value() {
 	echo bp_get_messages_content_value();
 }
 	function bp_get_messages_content_value() {
-		return apply_filters( 'bp_get_messages_content_value', $_SESSION['content'] );
+		return apply_filters( 'bp_get_messages_content_value', $_COOKIE['bp_messages_content'] );
 	}
 
 function bp_messages_options() {
@@ -450,7 +450,7 @@ function bp_message_get_recipient_tabs() {
 	global $bp;
 	
 	if ( isset( $_GET['r'] ) ) {
-		$user_id = bp_core_get_userid_from_user_login( $_GET['r'] );
+		$user_id = bp_core_get_userid( $_GET['r'] );
 		
 		if ( $user_id ) {
 			?>
@@ -541,13 +541,13 @@ function messages_view_thread( $thread_id ) {
 								</div>
 								<label for="reply"></label>
 								<div>
-									<textarea name="content" id="message_content" rows="15" cols="40"><?php echo attribute_escape( wp_filter_kses( $content ) ); ?></textarea>
+									<textarea name="content" id="message_content" rows="15" cols="40"><?php echo htmlspecialchars( wp_filter_kses( $content ) ); ?></textarea>
 								</div>
 							</div>
 							<p class="submit">
 								<input type="submit" name="send" value="<?php _e( 'Send Reply', 'buddypress' ) ?> &rarr;" id="send_reply_button"/>
 							</p>
-							<input type="hidden" id="thread_id" name="thread_id" value="<?php echo $thread->thread_id ?>" />
+							<input type="hidden" id="thread_id" name="thread_id" value="<?php echo attribute_escape( $thread->thread_id ); ?>" />
 							<input type="hidden" name="subject" id="subject" value="<?php _e('Re: ', 'buddypress'); echo str_replace( 'Re: ', '', $thread->last_message_subject); ?>" />
 					</div>
 					

@@ -37,7 +37,7 @@ function bp_core_admin_settings() {
 			</div>
 		<?php endif; ?>
 
-		<form action="<?php $_SERVER['PHP_SELF'] ?>" method="post" id="bp-admin-form">
+		<form action="" method="post" id="bp-admin-form">
 		
 			<table class="form-table">
 			<tbody>
@@ -88,7 +88,7 @@ function bp_core_admin_settings() {
 				<tr>
 					<th scope="row"><?php _e('Select theme to use for BuddyPress generated pages', 'buddypress' ) ?>:</th>
 					<td>
-						<?php $themes = bp_core_get_member_themes() ?>
+						<?php $themes = bp_core_get_buddypress_themes() ?>
 						<?php if ( $themes ) : ?>
 						<select name="bp-admin[active-member-theme]" id="active-member-theme">
 							<?php 
@@ -169,7 +169,7 @@ function bp_core_admin_component_setup() {
 			</div>
 		<?php endif; ?>
 	
-		<form action="<?php $_SERVER['PHP_SELF'] ?>" method="post" id="bp-admin-component-form">
+		<form action="" method="post" id="bp-admin-component-form">
 		
 			<p>
 			<?php _e( 

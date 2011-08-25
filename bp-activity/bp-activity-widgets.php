@@ -27,9 +27,8 @@ function bp_activity_widget_sitewide_activity($args) {
 		. $after_title; ?>
 		
 	<?php 
-	if ( empty( $options['max_items'] ) ) {
+	if ( !$options['max_items'] || empty( $options['max_items'] ) )
 		$options['max_items'] = 20;
-	}
 	?>
 	
 	<?php 
@@ -46,7 +45,7 @@ function bp_activity_widget_sitewide_activity($args) {
 		<ul id="site-wide-stream" class="activity-list">
 		<?php foreach( $activity['activities'] as $item ) : ?>
 			<li class="<?php echo $item['component_name'] ?>">
-				<?php echo apply_filters( 'bp_activity_content', bp_activity_content_filter( $item['content'], $item['date_recorded'], '', true, false, true ) ); ?>
+				<?php echo apply_filters( 'bp_get_activity_content', bp_activity_content_filter( $item['content'], $item['date_recorded'], '', true, false, true ) ); ?>
 			</li>
 		<?php endforeach; ?>
 		</ul>
@@ -74,9 +73,8 @@ function bp_activity_widget_sitewide_activity_control() {
 		update_blog_option( $current_blog->blog_id, 'bp_activity_widget_sitewide_activity', $options );
 	}
 
-	$max_items = attribute_escape( $options['max_items'] );
 ?>
-		<p><label for="bp-activity-widget-sitewide-items-max"><?php _e('Max Number of Items:', 'buddypress'); ?> <input class="widefat" id="bp-activity-widget-sitewide-items-max" name="bp-activity-widget-sitewide-items-max" type="text" value="<?php echo $max_items; ?>" style="width: 30%" /></label></p>
+		<p><label for="bp-activity-widget-sitewide-items-max"><?php _e('Max Number of Items:', 'buddypress'); ?> <input class="widefat" id="bp-activity-widget-sitewide-items-max" name="bp-activity-widget-sitewide-items-max" type="text" value="<?php echo attribute_escape( $options['max_items'] ); ?>" style="width: 30%" /></label></p>
 		<input type="hidden" id="bp-activity-widget-sitewide-submit" name="bp-activity-widget-sitewide-submit" value="1" />
 <?php
 }

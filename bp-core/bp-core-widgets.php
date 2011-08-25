@@ -38,8 +38,8 @@ function bp_core_widget_welcome($args) {
 		. $widget_name
 		. $after_title; ?>
 
-	<?php if ( $options['title'] ) : ?><h3><?php echo $options['title'] ?></h3><?php endif; ?>
-	<?php if ( $options['text'] ) : ?><p><?php echo $options['text'] ?></p><?php endif; ?>
+	<?php if ( $options['title'] ) : ?><h3><?php echo attribute_escape( $options['title'] ) ?></h3><?php endif; ?>
+	<?php if ( $options['text'] ) : ?><p><?php echo attribute_escape( $options['text'] ) ?></p><?php endif; ?>
 
 	<?php if ( !is_user_logged_in() ) { ?>
 	<div class="create-account"><div class="visit generic-button"><a href="<?php bp_signup_page() ?>" title="<?php _e('Create Account', 'buddypress') ?>"><?php _e('Create Account', 'buddypress') ?></a></div></div>
@@ -63,14 +63,12 @@ function bp_core_widget_welcome_control() {
 		$options = $newoptions;
 		update_blog_option( $current_blog->blog_id, 'bp_core_widget_welcome', $options );
 	}
-	
-	$title = attribute_escape( $options['title'] );
-	$text = attribute_escape( $options['text'] );
+
 ?>
-		<p><label for="bp-widget-welcome-title"><?php _e('Title:', 'buddypress'); ?> <input class="widefat" id="bp-widget-welcome-title" name="bp-widget-welcome-title" type="text" value="<?php echo $title; ?>" /></label></p>
+		<p><label for="bp-widget-welcome-title"><?php _e('Title:', 'buddypress'); ?> <input class="widefat" id="bp-widget-welcome-title" name="bp-widget-welcome-title" type="text" value="<?php echo attribute_escape( $options['title'] ); ?>" /></label></p>
 		<p>
 			<label for="bp-widget-welcome-text"><?php _e( 'Welcome Text:' , 'buddypress'); ?>
-				<textarea id="bp-widget-welcome-text" name="bp-widget-welcome-text" class="widefat" style="height: 100px"><?php echo $text; ?></textarea>
+				<textarea id="bp-widget-welcome-text" name="bp-widget-welcome-text" class="widefat" style="height: 100px"><?php echo htmlspecialchars( $options['text'] ); ?></textarea>
 			</label>
 		</p>
 		<input type="hidden" id="bp-widget-welcome-submit" name="bp-widget-welcome-submit" value="1" />
@@ -90,7 +88,10 @@ function bp_core_widget_members($args) {
 		. $widget_name 
 		. $after_title; ?>
 	
-	<?php 
+	<?php
+	if ( empty( $options['max_members'] ) || !$options['max_members'] )
+		$options['max_members'] = 5;
+		
 	if ( !$users = wp_cache_get( 'newest_users', 'bp' ) ) {
 		$users = BP_Core_User::get_newest_users( $options['max_members'] );
 		wp_cache_set( 'newest_users', $users, 'bp' );
@@ -125,7 +126,7 @@ function bp_core_widget_members($args) {
 			wp_nonce_field( 'bp_core_widget_members', '_wpnonce-members' );
 		?>
 		
-		<input type="hidden" name="members_widget_max" id="members_widget_max" value="<?php echo $options['max_members'] ?>" />
+		<input type="hidden" name="members_widget_max" id="members_widget_max" value="<?php echo attribute_escape( $options['max_members'] ); ?>" />
 		
 	<?php else: ?>
 		<div class="widget-error">
@@ -153,7 +154,7 @@ function bp_core_widget_members_control() {
 
 	$max_members = attribute_escape( $options['max_members'] );
 ?>
-		<p><label for="bp-core-widget-members-max"><?php _e('Max Members to show:', 'buddypress'); ?> <input class="widefat" id="bp-core-widget-members-max" name="bp-core-widget-members-max" type="text" value="<?php echo $max_members; ?>" style="width: 30%" /></label></p>
+		<p><label for="bp-core-widget-members-max"><?php _e('Max Members to show:', 'buddypress'); ?> <input class="widefat" id="bp-core-widget-members-max" name="bp-core-widget-members-max" type="text" value="<?php echo attribute_escape( $options['max_members'] ); ?>" style="width: 30%" /></label></p>
 		<input type="hidden" id="bp-core-widget-members-submit" name="bp-core-widget-members-submit" value="1" />
 <?php
 }
@@ -171,7 +172,10 @@ function bp_core_widget_whos_online($args) {
 		. $widget_name
 		. $after_title; ?>
 
-	<?php 
+	<?php
+	if ( empty( $options['max_members'] ) || !$options['max_members'] )
+		$options['max_members'] = 5;
+		
 	if ( !$users = wp_cache_get( 'online_users', 'bp' ) ) {
 		$users = BP_Core_User::get_online_users( $options['max_members'] );
 		wp_cache_set( 'online_users', $users, 'bp' );
@@ -184,7 +188,7 @@ function bp_core_widget_whos_online($args) {
 		<div class="avatar-block">
 		<?php foreach ( (array) $users['users'] as $user ) : ?>
 			<div class="item-avatar">
-				<a href="<?php echo bp_core_get_userurl($user->user_id) ?>" title="<?php bp_fetch_user_fullname( $user->user_id, true ) ?>"><?php echo bp_core_get_avatar( $user->user_id, 1 ) ?></a>
+				<a href="<?php echo bp_core_get_userurl($user->user_id) ?>" title="<?php echo bp_core_get_user_displayname( $user->user_id ) ?>"><?php echo bp_core_get_avatar( $user->user_id, 1 ) ?></a>
 			</div>
 		<?php endforeach; ?>
 		</div>
@@ -194,7 +198,7 @@ function bp_core_widget_whos_online($args) {
 			wp_nonce_field( 'bp_core_widget_members', '_wpnonce-members' );
 		?>
 
-		<input type="hidden" name="bp_core_widget_members_max" id="bp_core_widget_members_max" value="<?php echo $options['max_members'] ?>" />
+		<input type="hidden" name="bp_core_widget_members_max" id="bp_core_widget_members_max" value="<?php echo attribute_escape( $options['max_members'] ); ?>" />
 
 	<?php else: ?>
 		<div class="widget-error">
@@ -222,10 +226,9 @@ function bp_core_widget_whos_online_control() {
 		$options = $newoptions;
 		update_blog_option( $current_blog->blog_id, 'bp_core_widget_whos_online', $options );
 	}
-	
-	$max_members = attribute_escape( $options['max_members'] );
+
 ?>
-		<p><label for="bp-widget-whos-online-max-members"><?php _e('Maximum number of members to show:', 'buddypress'); ?><br /><input class="widefat" id="bp-widget-whos-online-max-members" name="bp-widget-whos-online-max-members" type="text" value="<?php echo $max_members; ?>" style="width: 30%" /></label></p>
+		<p><label for="bp-widget-whos-online-max-members"><?php _e('Maximum number of members to show:', 'buddypress'); ?><br /><input class="widefat" id="bp-widget-whos-online-max-members" name="bp-widget-whos-online-max-members" type="text" value="<?php echo attribute_escape( $options['max_members'] ); ?>" style="width: 30%" /></label></p>
 		<input type="hidden" id="bp-widget-whos-online-submit" name="bp-widget-whos-online-submit" value="1" />
 <?php
 }
