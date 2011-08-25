@@ -91,7 +91,7 @@ function messages_check_installed() {
 		return false;
 
 	/* Need to check db tables exist, activate hook no-worky in mu-plugins folder. */
-	if ( $bp->site_options['bp-messages-db-version'] < BP_MESSAGES_DB_VERSION )
+	if ( get_site_option( 'bp-messages-db-version' ) < BP_MESSAGES_DB_VERSION )
 		messages_install();
 }
 add_action( 'admin_menu', 'messages_check_installed' );
@@ -129,8 +129,6 @@ function messages_setup_nav() {
 	do_action( 'messages_setup_nav' );
 }
 add_action( 'bp_setup_nav', 'messages_setup_nav' );
-add_action( 'admin_menu', 'messages_setup_nav' );
-
 
 /********************************************************************************
  * Screen Functions

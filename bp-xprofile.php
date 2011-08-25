@@ -71,7 +71,7 @@ function xprofile_install() {
 			  KEY user_id (user_id)
 	) {$charset_collate};";
 
-	if ( empty( $bp->site_options['bp-xprofile-db-version'] ) ) {
+	if ( '' == get_site_option( 'bp-xprofile-db-version' ) ) {
 		if ( !$wpdb->get_var( "SELECT id FROM {$bp->profile->table_name_groups} WHERE id = 1" ) )
 			$sql[] = "INSERT INTO {$bp->profile->table_name_groups} VALUES ( 1, '" . get_site_option( 'bp-xprofile-base-group-name' ) . "', '', 0 );";
 
@@ -155,7 +155,7 @@ function xprofile_add_admin_menu() {
 	add_submenu_page( 'bp-general-settings', __("Profile Field Setup", 'buddypress'), __("Profile Field Setup", 'buddypress'), 'manage_options', 'bp-profile-setup', "xprofile_admin" );
 
 	/* Need to check db tables exist, activate hook no-worky in mu-plugins folder. */
-	if ( $bp->site_options['bp-xprofile-db-version'] < BP_XPROFILE_DB_VERSION )
+	if ( get_site_option( 'bp-xprofile-db-version' ) < BP_XPROFILE_DB_VERSION )
 		xprofile_install();
 }
 add_action( 'admin_menu', 'xprofile_add_admin_menu' );
@@ -197,8 +197,6 @@ function xprofile_setup_nav() {
 	do_action( 'xprofile_setup_nav' );
 }
 add_action( 'bp_setup_nav', 'xprofile_setup_nav' );
-add_action( 'admin_menu', 'xprofile_setup_nav' );
-
 
 /**
  * xprofile_setup_adminbar_menu()
@@ -725,6 +723,32 @@ function xprofile_set_field_data( $field, $user_id, $value, $is_required = false
 
 	if ( $is_required && ( empty( $value ) || !strlen( trim( $value ) ) ) )
 		return false;
+
+	$field = new BP_XProfile_Field( $field_id );
+
+	/* Check the value is an acceptable value */
+	if ( 'checkbox' == $field->type || 'radio' == $field->type || 'selectbox' == $field->type || 'multiselectbox' == $field->type ) {
+		$options = $field->get_children();
+
+		foreach( $options as $option )
+			$possible_values[] = $option->name;
+
+		if ( is_array( $value ) ) {
+			foreach( $value as $i => $single ) {
+				if ( !in_array( $single, (array)$possible_values ) )
+					unset( $value[$i] );
+			}
+
+			if ( empty( $value ) )
+				return false;
+
+			/* Reset the keys by merging with an empty array */
+			$value = array_merge( array(), $value );
+		} else {
+			if ( !in_array( $value, (array)$possible_values ) )
+				return false;
+		}
+	}
 
 	$field = new BP_XProfile_ProfileData();
 	$field->field_id = $field_id;

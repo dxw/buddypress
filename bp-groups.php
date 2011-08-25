@@ -108,7 +108,7 @@ add_action( 'bp_setup_root_components', 'groups_setup_root_component' );
 
 function groups_check_installed() {
 	/* Need to check db tables exist, activate hook no-worky in mu-plugins folder. */
-	if ( $bp->site_options['bp-groups-db-version'] < BP_GROUPS_DB_VERSION )
+	if ( get_site_option( 'bp-groups-db-version' ) < BP_GROUPS_DB_VERSION )
 		groups_install();
 }
 add_action( 'admin_menu', 'groups_check_installed' );
@@ -218,7 +218,6 @@ function groups_setup_nav() {
 	do_action( 'groups_setup_nav', $bp->groups->current_group->user_has_access );
 }
 add_action( 'bp_setup_nav', 'groups_setup_nav' );
-add_action( 'admin_menu', 'groups_setup_nav' );
 
 function groups_directory_groups_setup() {
 	global $bp;
@@ -1230,7 +1229,7 @@ add_action( 'wp', 'groups_action_redirect_to_random_group', 6 );
 function groups_action_group_feed() {
 	global $bp, $wp_query;
 
-	if ( $bp->current_component != $bp->groups->slug || !$bp->groups->current_group || $bp->current_action != 'feed' )
+	if ( !bp_is_active( 'activity' ) || $bp->current_component != $bp->groups->slug || !$bp->groups->current_group || $bp->current_action != 'feed' )
 		return false;
 
 	$wp_query->is_404 = false;
@@ -1296,7 +1295,7 @@ function groups_record_activity( $args = '' ) {
 	);
 
 	$r = wp_parse_args( $args, $defaults );
-	extract( $r, EXTR_SKIP );
+	extract( $r );
 
 	return bp_activity_add( array( 'id' => $id, 'user_id' => $user_id, 'action' => $action, 'content' => $content, 'primary_link' => $primary_link, 'component' => $component, 'type' => $type, 'item_id' => $item_id, 'secondary_item_id' => $secondary_item_id, 'recorded_time' => $recorded_time, 'hide_sitewide' => $hide_sitewide ) );
 }
@@ -2451,7 +2450,7 @@ function groups_get_groupmeta( $group_id, $meta_key = '') {
 			return '';
 	}
 
-	$metas = array_map('maybe_unserialize', $metas);
+	$metas = array_map('maybe_unserialize', (array)$metas);
 
 	if ( 1 == count($metas) )
 		return $metas[0];

@@ -190,9 +190,9 @@ function bp_has_activities( $args = '' ) {
 		if ( 'just-me' == $scope )
 			$display_comments = 'stream';
 
-		$show_hidden = ( $user_id == $bp->loggedin_user->id ) ? 1 : 0;
-
 		if ( $user_id = ( !empty( $bp->displayed_user->id ) ) ? $bp->displayed_user->id : $bp->loggedin_user->id ) {
+			$show_hidden = ( $user_id == $bp->loggedin_user->id ) ? 1 : 0;
+
 			switch ( $scope ) {
 				case 'friends':
 					if ( function_exists( 'friends_get_friend_user_ids' ) )
@@ -224,7 +224,7 @@ function bp_has_activities( $args = '' ) {
 				case 'mentions':
 					$user_nicename = ( !empty( $bp->displayed_user->id ) ) ? $bp->displayed_user->userdata->user_nicename : $bp->loggedin_user->userdata->user_nicename;
 					$user_login = ( !empty( $bp->displayed_user->id ) ) ? $bp->displayed_user->userdata->user_login : $bp->loggedin_user->userdata->user_login;
-					$search_terms = '@' . bp_core_get_username( $user_id, $user_nicename, $user_login );
+					$search_terms = '@' . bp_core_get_username( $user_id, $user_nicename, $user_login ) . '<'; // Start search at @ symbol and stop search at closing tag delimiter.
 					$display_comments = 'stream';
 					$user_id = false;
 					break;
@@ -459,6 +459,15 @@ function bp_activity_content_body() {
 		return apply_filters( 'bp_get_activity_content_body', $activities_template->activity->content, &$activities_template->activity );
 	}
 
+	function bp_activity_has_content() {
+		global $activities_template;
+
+		if ( !empty( $activities_template->activity->content ) )
+			return true;
+
+		return false;
+	}
+
 function bp_activity_content() {
 	echo bp_get_activity_content();
 }
@@ -472,7 +481,7 @@ function bp_activity_content() {
 		 * This function is mainly for backwards comptibility.
 		 */
 
-		$content = bp_get_activity_action() . bp_get_activity_content_body();
+		$content = bp_get_activity_action() . ' ' . bp_get_activity_content_body();
 		return apply_filters( 'bp_get_activity_content', $content );
 	}
 
@@ -489,7 +498,7 @@ function bp_activity_content() {
 		$content .= apply_filters( 'bp_activity_permalink', ' &middot; <a href="' . bp_activity_get_permalink( $activities_template->activity->id, $activities_template->activity ) . '" class="view" title="' . __( 'View Thread / Permalink', 'buddypress' ) . '">' . __( 'View', 'buddypress' ) . '</a>', &$activities_template->activity );
 
 		/* Add the delete link if the user has permission on this item */
-		if ( ( is_user_logged_in() && $activities_template->activity->user_id == $bp->loggedin_user->id ) || $bp->is_item_admin || is_site_admin() )
+		if ( ( is_user_logged_in() && $activities_template->activity->user_id == $bp->loggedin_user->id ) || $bp->is_item_admin || $bp->loggedin_user->is_site_admin )
 			 $content .= apply_filters( 'bp_activity_delete_link', ' &middot; ' . bp_get_activity_delete_link(), &$activities_template->activity );
 
 		return apply_filters( 'bp_insert_activity_meta', $content );
@@ -519,7 +528,7 @@ function bp_activity_parent_content( $args = '' ) {
 		if ( empty( $activities_template->activity_parents[$parent_id]->content ) )
 			$content = $activities_template->activity_parents[$parent_id]->action;
 		else
-			$content = $activities_template->activity_parents[$parent_id]->action . $activities_template->activity_parents[$parent_id]->content;
+			$content = $activities_template->activity_parents[$parent_id]->action . ' ' . $activities_template->activity_parents[$parent_id]->content;
 
 		/* Remove the time since content for backwards compatibility */
 		$content = str_replace( '<span class="time-since">%s</span>', '', $content );
@@ -573,7 +582,7 @@ function bp_activity_comments( $args = '' ) {
 					$content .= '<span class="acomment-replylink"> &middot; <a href="#acomment-' . $comment->id . '" class="acomment-reply" id="acomment-reply-' . $activities_template->activity->id . '">' . __( 'Reply', 'buddypress' ) . '</a></span>';
 
 				/* Delete link */
-				if ( is_site_admin() || $bp->loggedin_user->id == $comment->user_id )
+				if ( $bp->loggedin_user->is_site_admin || $bp->loggedin_user->id == $comment->user_id )
 					$content .= ' &middot; <a href="' . wp_nonce_url( $bp->root_domain . '/' . $bp->activity->slug . '/delete/?cid=' . $comment->id, 'bp_activity_delete_link' ) . '" class="delete acomment-delete">' . __( 'Delete', 'buddypress' ) . '</a>';
 
 				$content .= '</div>';
@@ -936,7 +945,7 @@ function bp_activity_feed_item_description() {
 		if ( empty( $activities_template->activity->action ) )
 			$content = $activities_template->activity->content;
 		else
-			$content = $activities_template->activity->action . $activities_template->activity->content;
+			$content = $activities_template->activity->action . ' ' . $activities_template->activity->content;
 
 		return apply_filters( 'bp_get_activity_feed_item_description', html_entity_decode( str_replace( '%s', '', $content ) ) );
 	}
