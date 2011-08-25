@@ -33,7 +33,7 @@ class BP_Activity_Template {
 		if ( $type == 'friends' && ( bp_is_home() || is_site_admin() || $bp->loggedin_user->id == $user_id ) )
 			$this->activities = bp_activity_get_friends_activity( $user_id, $timeframe, $this->pag_num, $this->pag_page );
 		
-		if ( !$max )
+		if ( !$max || $max >= (int)$this->activities['total'] )
 			$this->total_activity_count = (int)$this->activities['total'];
 		else
 			$this->total_activity_count = (int)$max;
@@ -308,6 +308,15 @@ function bp_activities_member_rss_link() {
 	}
 
 /* Template tags for RSS feed output */
+
+function bp_activity_feed_item_guid() {
+	echo bp_get_activity_feed_item_guid();
+}
+	function bp_get_activity_feed_item_guid() {
+		global $activities_template;
+
+		return apply_filters( 'bp_get_activity_feed_item_title', md5( $activities_template->activity->date_recorded . '-' . $activities_template->activity->content ) );	
+	}
 
 function bp_activity_feed_item_title() {
 	echo bp_get_activity_feed_item_title();
