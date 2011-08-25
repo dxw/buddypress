@@ -35,7 +35,7 @@ a { color: #1fb3dd; }
 a:hover, a:active { color: #888; }
 a:focus { outline: 1px dotted #ccc; }
 
-.padder { padding: 20px; }
+.padder { padding: 19px; }
 .clear { clear: left; }
 
 p {	margin-bottom: 15px; }
@@ -179,7 +179,7 @@ div#sidebar {
 	width: 224px;
 	margin-left: -226px;
 	margin-top: 1px;
-	border-left: 1px solid #e4e4e4;
+	border-left: 1px solid #ddd;
 	-moz-border-radius-topright: 3px;
 	-webkit-border-top-right-radius: 3px;
 	background: url( ../images/sidebar_back.gif ) top left repeat-x;
@@ -273,7 +273,7 @@ div#content {
 
 div#content .padder {
 	margin-right: 225px;
-	border-right: 1px solid #e4e4e4;
+	border-right: 1px solid #ddd;
 	-moz-border-radius-topleft: 6px;
 	-webkit-border-top-left-radius: 6px;
 	-moz-border-radius-bottomleft: 6px;
@@ -448,7 +448,7 @@ ul.item-list {
 div.item-list-tabs {
 	clear: left;
 	overflow: hidden;
-	margin: 25px -20px 20px -20px;
+	margin: 25px -19px 20px -19px;
 	background: #eaeaea;
 }
 	div.item-list-tabs ul li a {
@@ -524,7 +524,7 @@ div.item-list-tabs {
 
 	div.item-list-tabs#subnav {
 		background: #fff;
-		margin: -15px -20px 15px -20px;
+		margin: -15px -19px 15px -19px;
 		border-bottom: 1px solid #eaeaea;
 		min-height: 35px;
 		overflow: hidden;
@@ -644,7 +644,7 @@ form.standard-form#signup_form div div.error {
 /* > Buttons
 -------------------------------------------------------------- */
 
-a.button, input[type=submit], input[type=button],
+a.button, input[type=submit], input[type=button], input[type=reset],
 ul.button-nav li a, div.generic-button a {
 	background: url( ../images/white-grad.png ) top left repeat-x;
 	border: 1px solid #ddd;
@@ -659,7 +659,7 @@ ul.button-nav li a, div.generic-button a {
 	vertical-align: bottom;
 	cursor: pointer;
 }
-	a.button:hover, a.button:focus, input[type=submit]:hover, input[type=button]:hover,
+	a.button:hover, a.button:focus, input[type=submit]:hover, input[type=button]:hover, input[type=reset]:hover,
 	ul.button-nav li a:hover, ul.button-nav li.current a,
 	div.generic-button a:hover {
 		border-color: #aaa;
@@ -846,6 +846,10 @@ form#send-invite-form {
 table {
 	width: 100%;
 }
+	table thead tr {
+		background: #eaeaea;
+	}
+
 	table#message-threads {
 		margin: 0 -20px;
 		width: auto;
@@ -894,10 +898,6 @@ table.forum {
 	margin: -9px -20px 20px -20px;
 	width: auto;
 }
-	table.forum tr:first-child {
-		background: #fafafa;
-	}
-
 	table.forum tr.sticky td {
 		background: #FFF9DB;
 		border-top: 1px solid #FFE8C4;

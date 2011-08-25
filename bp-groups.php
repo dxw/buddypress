@@ -116,7 +116,7 @@ add_action( 'admin_menu', 'groups_check_installed' );
 function groups_setup_nav() {
 	global $bp;
 
-	if ( $group_id = BP_Groups_Group::group_exists($bp->current_action) ) {
+	if ( $bp->current_component == $bp->groups->slug && $group_id = BP_Groups_Group::group_exists($bp->current_action) ) {
 
 		/* This is a single group page. */
 		$bp->is_single_item = true;
@@ -960,39 +960,44 @@ add_action( 'wp', 'groups_screen_group_admin_delete_group', 4 );
 
 function groups_screen_notification_settings() {
 	global $current_user; ?>
-	<table class="notification-settings" id="groups-notification-settings">
-		<tr>
-			<th class="icon"></th>
-			<th class="title"><?php _e( 'Groups', 'buddypress' ) ?></th>
-			<th class="yes"><?php _e( 'Yes', 'buddypress' ) ?></th>
-			<th class="no"><?php _e( 'No', 'buddypress' )?></th>
-		</tr>
-		<tr>
-			<td></td>
-			<td><?php _e( 'A member invites you to join a group', 'buddypress' ) ?></td>
-			<td class="yes"><input type="radio" name="notifications[notification_groups_invite]" value="yes" <?php if ( !get_usermeta( $current_user->id, 'notification_groups_invite') || 'yes' == get_usermeta( $current_user->id, 'notification_groups_invite') ) { ?>checked="checked" <?php } ?>/></td>
-			<td class="no"><input type="radio" name="notifications[notification_groups_invite]" value="no" <?php if ( 'no' == get_usermeta( $current_user->id, 'notification_groups_invite') ) { ?>checked="checked" <?php } ?>/></td>
-		</tr>
-		<tr>
-			<td></td>
-			<td><?php _e( 'Group information is updated', 'buddypress' ) ?></td>
-			<td class="yes"><input type="radio" name="notifications[notification_groups_group_updated]" value="yes" <?php if ( !get_usermeta( $current_user->id, 'notification_groups_group_updated') || 'yes' == get_usermeta( $current_user->id, 'notification_groups_group_updated') ) { ?>checked="checked" <?php } ?>/></td>
-			<td class="no"><input type="radio" name="notifications[notification_groups_group_updated]" value="no" <?php if ( 'no' == get_usermeta( $current_user->id, 'notification_groups_group_updated') ) { ?>checked="checked" <?php } ?>/></td>
-		</tr>
-		<tr>
-			<td></td>
-			<td><?php _e( 'You are promoted to a group administrator or moderator', 'buddypress' ) ?></td>
-			<td class="yes"><input type="radio" name="notifications[notification_groups_admin_promotion]" value="yes" <?php if ( !get_usermeta( $current_user->id, 'notification_groups_admin_promotion') || 'yes' == get_usermeta( $current_user->id, 'notification_groups_admin_promotion') ) { ?>checked="checked" <?php } ?>/></td>
-			<td class="no"><input type="radio" name="notifications[notification_groups_admin_promotion]" value="no" <?php if ( 'no' == get_usermeta( $current_user->id, 'notification_groups_admin_promotion') ) { ?>checked="checked" <?php } ?>/></td>
-		</tr>
-		<tr>
-			<td></td>
-			<td><?php _e( 'A member requests to join a private group for which you are an admin', 'buddypress' ) ?></td>
-			<td class="yes"><input type="radio" name="notifications[notification_groups_membership_request]" value="yes" <?php if ( !get_usermeta( $current_user->id, 'notification_groups_membership_request') || 'yes' == get_usermeta( $current_user->id, 'notification_groups_membership_request') ) { ?>checked="checked" <?php } ?>/></td>
-			<td class="no"><input type="radio" name="notifications[notification_groups_membership_request]" value="no" <?php if ( 'no' == get_usermeta( $current_user->id, 'notification_groups_membership_request') ) { ?>checked="checked" <?php } ?>/></td>
-		</tr>
+	<table class="notification-settings zebra" id="groups-notification-settings">
+		<thead>
+			<tr>
+				<th class="icon"></th>
+				<th class="title"><?php _e( 'Groups', 'buddypress' ) ?></th>
+				<th class="yes"><?php _e( 'Yes', 'buddypress' ) ?></th>
+				<th class="no"><?php _e( 'No', 'buddypress' )?></th>
+			</tr>
+		</thead>
 
-		<?php do_action( 'groups_screen_notification_settings' ); ?>
+		<tbody>
+			<tr>
+				<td></td>
+				<td><?php _e( 'A member invites you to join a group', 'buddypress' ) ?></td>
+				<td class="yes"><input type="radio" name="notifications[notification_groups_invite]" value="yes" <?php if ( !get_usermeta( $current_user->id, 'notification_groups_invite') || 'yes' == get_usermeta( $current_user->id, 'notification_groups_invite') ) { ?>checked="checked" <?php } ?>/></td>
+				<td class="no"><input type="radio" name="notifications[notification_groups_invite]" value="no" <?php if ( 'no' == get_usermeta( $current_user->id, 'notification_groups_invite') ) { ?>checked="checked" <?php } ?>/></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td><?php _e( 'Group information is updated', 'buddypress' ) ?></td>
+				<td class="yes"><input type="radio" name="notifications[notification_groups_group_updated]" value="yes" <?php if ( !get_usermeta( $current_user->id, 'notification_groups_group_updated') || 'yes' == get_usermeta( $current_user->id, 'notification_groups_group_updated') ) { ?>checked="checked" <?php } ?>/></td>
+				<td class="no"><input type="radio" name="notifications[notification_groups_group_updated]" value="no" <?php if ( 'no' == get_usermeta( $current_user->id, 'notification_groups_group_updated') ) { ?>checked="checked" <?php } ?>/></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td><?php _e( 'You are promoted to a group administrator or moderator', 'buddypress' ) ?></td>
+				<td class="yes"><input type="radio" name="notifications[notification_groups_admin_promotion]" value="yes" <?php if ( !get_usermeta( $current_user->id, 'notification_groups_admin_promotion') || 'yes' == get_usermeta( $current_user->id, 'notification_groups_admin_promotion') ) { ?>checked="checked" <?php } ?>/></td>
+				<td class="no"><input type="radio" name="notifications[notification_groups_admin_promotion]" value="no" <?php if ( 'no' == get_usermeta( $current_user->id, 'notification_groups_admin_promotion') ) { ?>checked="checked" <?php } ?>/></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td><?php _e( 'A member requests to join a private group for which you are an admin', 'buddypress' ) ?></td>
+				<td class="yes"><input type="radio" name="notifications[notification_groups_membership_request]" value="yes" <?php if ( !get_usermeta( $current_user->id, 'notification_groups_membership_request') || 'yes' == get_usermeta( $current_user->id, 'notification_groups_membership_request') ) { ?>checked="checked" <?php } ?>/></td>
+				<td class="no"><input type="radio" name="notifications[notification_groups_membership_request]" value="no" <?php if ( 'no' == get_usermeta( $current_user->id, 'notification_groups_membership_request') ) { ?>checked="checked" <?php } ?>/></td>
+			</tr>
+
+			<?php do_action( 'groups_screen_notification_settings' ); ?>
+		</tbody>
 	</table>
 <?php
 }
@@ -1949,6 +1954,24 @@ function groups_new_group_forum( $group_id = false, $group_name = false, $group_
 	do_action( 'groups_new_group_forum', $forum_id, $group_id );
 }
 
+function groups_update_group_forum( $group_id ) {
+
+	$group = new BP_Groups_Group( $group_id );
+
+	if ( !$group->enable_forum )
+		return false;
+
+	$args = array(
+		'forum_id'		=> groups_get_groupmeta( $group, 'forum_id' ),
+		'forum_name'	=> $group->name,
+		'forum_desc'	=> $group->desc,
+		'forum_slug'	=> $group->slug
+	);
+
+	bp_forums_update_forum( apply_filters( 'groups_update_group_forum', $args ) );
+}
+add_action( 'groups_details_updated', 'groups_update_group_forum' );
+
 function groups_new_group_forum_post( $post_text, $topic_id, $page = false ) {
 	global $bp;
 
@@ -2395,10 +2418,10 @@ function groups_accept_membership_request( $membership_id, $user_id = false, $gr
 	$group = new BP_Groups_Group( $membership->group_id );
 
 	groups_record_activity( array(
-		'action' => apply_filters( 'groups_activity_membership_accepted_action', sprintf( __( '%s joined the group %s', 'buddypress'), bp_core_get_userlink( $user_id ), '<a href="' . bp_get_group_permalink( $group ) . '">' . attribute_escape( $group->name ) . '</a>' ), $user_id, &$group ),
-		'type' => 'joined_group',
-		'item_id' => $group->id,
-		'user_id' => $user_id
+		'action'	=> apply_filters( 'groups_activity_membership_accepted_action', sprintf( __( '%s joined the group %s', 'buddypress'), bp_core_get_userlink( $membership->user_id ), '<a href="' . bp_get_group_permalink( $group ) . '">' . attribute_escape( $group->name ) . '</a>' ), $membership->user_id, &$group ),
+		'type'		=> 'joined_group',
+		'item_id'	=> $membership->group_id,
+		'user_id'	=> $membership->user_id
 	) );
 
 	/* Send a notification to the user. */

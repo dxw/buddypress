@@ -228,7 +228,7 @@ jq(document).ready( function() {
 
 		/* Load more updates at the end of the page */
 		if ( target.parent().attr('class') == 'load-more' ) {
-			jq("li.load-more").addClass('loading');
+			jq("#content li.load-more").addClass('loading');
 
 			if ( null == jq.cookie('bp-activity-oldestpage') )
 				jq.cookie('bp-activity-oldestpage', 1, {path: '/'} );
@@ -242,9 +242,9 @@ jq(document).ready( function() {
 			},
 			function(response)
 			{
-				jq("li.load-more").removeClass('loading');
+				jq("#content li.load-more").removeClass('loading');
 				jq.cookie( 'bp-activity-oldestpage', oldest_page, {path: '/'} );
-				jq("ul.activity-list").append(response.contents);
+				jq("#content ul.activity-list").append(response.contents);
 
 				target.parent().hide();
 			}, 'json' );
@@ -819,8 +819,16 @@ jq(document).ready( function() {
 
 	/** Alternate Highlighting ******************************************/
 
-	jq('table tr, div.message-box').each( function(i) {
-		if ( i % 2 != 1 )
+	jq('body#bp-default table.zebra tbody tr').mouseover( function() {
+		jq(this).addClass('over');
+	}).mouseout( function() {
+		jq(this).removeClass('over');
+	});
+		
+	jq('body#bp-default table.zebra tbody tr:odd').addClass('alt');
+
+	jq('div.message-box').each( function(i) {
+		if ( i % 2 == 1 )
 			jq(this).addClass('alt');
 	});
 
@@ -956,7 +964,7 @@ jq(document).ready( function() {
 	);
 
 	/* Bulk delete messages */
-	jq("a#delete_inbox_messages").click( function() {
+	jq("a#delete_inbox_messages, a#delete_sentbox_messages").click( function() {
 		checkboxes_tosend = '';
 		checkboxes = jq("#message-threads tr td input[type='checkbox']");
 
@@ -989,7 +997,7 @@ jq(document).ready( function() {
 			}
 
 			jq('div#message').hide().slideDown(150);
-			jq("a#delete_inbox_messages").removeClass('loading');
+			jq("a#delete_inbox_messages, a#delete_sentbox_messages").removeClass('loading');
 		});
 		return false;
 	});

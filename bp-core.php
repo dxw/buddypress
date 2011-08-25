@@ -190,13 +190,13 @@ add_action( 'bp_setup_globals', 'bp_core_setup_globals' );
  * @uses bp_core_add_root_component() Adds a slug to the root components global variable.
  */
 function bp_core_setup_root_uris() {
-	/* Add core root components */
+	// Add core root components
 	bp_core_add_root_component( BP_MEMBERS_SLUG );
 	bp_core_add_root_component( BP_REGISTER_SLUG );
 	bp_core_add_root_component( BP_ACTIVATION_SLUG );
 	bp_core_add_root_component( BP_SEARCH_SLUG );
 }
-add_action( 'plugins_loaded', 'bp_core_setup_root_uris', 2 );
+add_action( 'bp_setup_root_components', 'bp_core_setup_root_uris' );
 
 
 /**
@@ -815,7 +815,8 @@ function bp_core_new_subnav_item( $args = '' ) {
 		'slug' => $slug,
 		'css_id' => $item_css_id,
 		'position' => $position,
-		'user_has_access' => $user_has_access
+		'user_has_access' => $user_has_access,
+		'screen_function' => $screen_function
 	);
 
 	if ( ( $bp->current_action == $slug && $bp->current_component == $parent_slug ) && $user_has_access ) {
@@ -890,9 +891,9 @@ function bp_core_remove_nav_item( $parent_id ) {
 function bp_core_remove_subnav_item( $parent_id, $slug ) {
 	global $bp;
 
-	$function = $bp->bp_options_nav[$parent_id][$slug]['screen_function'];
+	$screen_function = $bp->bp_options_nav[$parent_id][$slug]['screen_function'];
 
-	if ( $function ) {
+	if ( $screen_function ) {
 		if ( !is_object( $screen_function[0] ) )
 			remove_action( 'wp', $screen_function, 3 );
 		else
@@ -1611,7 +1612,7 @@ function bp_core_get_site_options() {
 	$meta_keys = "'" . implode( "','", (array)$options ) ."'";
 
 	if ( bp_core_is_multisite() )
-		$meta = $wpdb->get_results( "SELECT meta_key AS name, meta_value AS value FROM {$wpdb->sitemeta} WHERE meta_key IN ({$meta_keys})" );
+		$meta = $wpdb->get_results( "SELECT meta_key AS name, meta_value AS value FROM {$wpdb->sitemeta} WHERE meta_key IN ({$meta_keys}) AND site_id = {$wpdb->siteid}" );
 	else
 		$meta = $wpdb->get_results( "SELECT option_name AS name, option_value AS value FROM {$wpdb->options} WHERE option_name IN ({$meta_keys})" );
 
@@ -1712,12 +1713,12 @@ function bp_core_delete_account( $user_id = false ) {
 	if ( (int)get_site_option( 'bp-disable-account-deletion' ) )
 		return false;
 
+	/* Site admins cannot be deleted */
+	if ( is_site_admin( bp_core_get_username( $user_id ) ) )
+		return false;
+
 	/* Specifically handle multi-site environment */
 	if ( bp_core_is_multisite() ) {
-		/* Site admins cannot be deleted */
-		if ( is_site_admin( bp_core_get_username( $user_id ) ) )
-			return false;
-
 		if ( $wp_version >= '3.0' )
 			require_once( ABSPATH . '/wp-admin/includes/ms.php' );
 		else
@@ -1726,11 +1727,12 @@ function bp_core_delete_account( $user_id = false ) {
 		require_once( ABSPATH . '/wp-admin/includes/user.php' );
 
 		return wpmu_delete_user( $user_id );
-	}
 
 	/* Single site user deletion */
-	require_once( ABSPATH . '/wp-admin/includes/user.php' );
-	return wp_delete_user( $user_id );
+	} else {
+		require_once( ABSPATH . '/wp-admin/includes/user.php' );
+		return wp_delete_user( $user_id );
+	}
 }
 
 
@@ -1951,7 +1953,7 @@ function bp_core_load_buddypress_textdomain() {
 	if ( file_exists( $mofile ) )
 		load_textdomain( 'buddypress', $mofile );
 }
-add_action ( 'plugins_loaded', 'bp_core_load_buddypress_textdomain', 5 );
+add_action ( 'bp_loaded', 'bp_core_load_buddypress_textdomain', 2 );
 
 function bp_core_add_ajax_hook() {
 	/* Theme only, we already have the wp_ajax_ hook firing in wp-admin */
@@ -2049,31 +2051,66 @@ function bp_core_activate_site_options( $keys = array() ) {
  * Functions to set up custom BuddyPress actions that all other components can
  * hook in to.
  */
-
-/* Allow core components and dependent plugins to set globals */
-function bp_setup_globals() {
-	do_action( 'bp_setup_globals' );
+ 
+/**
+ * bp_include()
+ *
+ * Allow plugins to include their files ahead of core filters
+ */
+function bp_include() {
+	do_action( 'bp_include' );
 }
-add_action( 'plugins_loaded', 'bp_setup_globals', 5 );
+add_action( 'bp_loaded', 'bp_include', 2 );
 
-/* Allow core components and dependent plugins to set root components */
+/**
+ * bp_setup_root_components()
+ *
+ * Allow core components and dependent plugins to set root components
+ */
 function bp_setup_root_components() {
 	do_action( 'bp_setup_root_components' );
 }
-add_action( 'plugins_loaded', 'bp_setup_root_components', 2 );
+add_action( 'bp_loaded', 'bp_setup_root_components', 2 );
 
-/* Allow core components and dependent plugins to set their nav */
+/**
+ * bp_setup_globals()
+ *
+ * Allow core components and dependent plugins to set globals
+ */
+function bp_setup_globals() {
+	do_action( 'bp_setup_globals' );
+}
+add_action( 'bp_loaded', 'bp_setup_globals', 6 );
+
+/**
+ * bp_setup_nav()
+ *
+ * Allow core components and dependent plugins to set their nav
+ */
 function bp_setup_nav() {
 	do_action( 'bp_setup_nav' );
 }
-add_action( 'plugins_loaded', 'bp_setup_nav' );
+add_action( 'bp_loaded', 'bp_setup_nav', 8 );
 
-/* Allow core components and dependent plugins to register widgets */
+/**
+ * bp_setup_widgets()
+ *
+ * Allow core components and dependent plugins to register widgets
+ */
 function bp_setup_widgets() {
 	do_action( 'bp_register_widgets' );
 }
-add_action( 'plugins_loaded', 'bp_setup_widgets' );
+add_action( 'bp_loaded', 'bp_setup_widgets', 8 );
 
+/**
+ * bp_init()
+ *
+ * Allow components to initialize themselves cleanly
+ */
+function bp_init() {
+	do_action( 'bp_init' );
+}
+add_action( 'bp_loaded', 'bp_init' );
 
 /********************************************************************************
  * Caching

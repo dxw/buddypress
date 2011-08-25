@@ -1049,6 +1049,12 @@ Class BP_Groups_Member {
 	function delete_all_for_user( $user_id ) {
 		global $wpdb, $bp;
 
+		// Get all the group ids for the current user's groups and update counts
+		$group_ids = $this->get_group_ids( $user_id );
+		foreach ( $group_ids->groups as $group_id ) {
+			groups_update_groupmeta( $group_id, 'total_member_count', groups_get_total_member_count( $group_id ) - 1 );
+		}
+
 		return $wpdb->query( $wpdb->prepare( "DELETE FROM {$bp->groups->table_name_members} WHERE user_id = %d", $user_id ) );
 	}
 }
@@ -1178,7 +1184,7 @@ function bp_register_group_extension( $group_extension_class ) {
 	if ( !class_exists( $group_extension_class ) )
 		return false;
 
-	/* Register the group extension on the plugins_loaded action so we have access to all plugins */
+	/* Register the group extension on the bp_init action so we have access to all plugins */
 	add_action( 'bp_init', create_function( '', '$extension = new ' . $group_extension_class . '; add_action( "wp", array( &$extension, "_register" ), 2 );' ), 11 );
 }
 

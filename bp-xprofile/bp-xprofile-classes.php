@@ -301,7 +301,7 @@ Class BP_XProfile_Field {
 		if ( $this->id != null )
 			$sql = $wpdb->prepare("UPDATE {$bp->profile->table_name_fields} SET group_id = %d, parent_id = 0, type = %s, name = %s, description = %s, is_required = %d, order_by = %s, field_order = %d WHERE id = %d", $this->group_id, $this->type, $this->name, $this->description, $this->is_required, $this->order_by, $this->field_order, $this->id);
 		else
-			$sql = $wpdb->prepare("INSERT INTO {$bp->profile->table_name_fields} (group_id, parent_id, type, name, description, is_required, order_by, field_order ) VALUES (%d, 0, %s, %s, %s, %d, %s, %d )", $this->group_id, $this->type, $this->name, $this->description, $this->is_required, $this->order_by, $this->field_order );
+			$sql = $wpdb->prepare("INSERT INTO {$bp->profile->table_name_fields} (group_id, parent_id, type, name, description, is_required, order_by, field_order ) VALUES (%d, %d, %s, %s, %s, %d, %s, %d )", $this->group_id, $this->parent_id, $this->type, $this->name, $this->description, $this->is_required, $this->order_by, $this->field_order );
 
 		// Check for null so field options can be changed without changing any other part of the field.
 		// The described situation will return 0 here.
@@ -366,7 +366,7 @@ Class BP_XProfile_Field {
 						}
 
 						if ( '' != $option_value ) {
-							if ( !$wpdb->query( $wpdb->prepare("INSERT INTO {$bp->profile->table_name_fields} (group_id, parent_id, type, name, description, is_required, option_order, is_default_option) VALUES (%d, %d, 'option', %s, '', 0, %d, %d)", $this->group_id, $parent_id, $option_value, $counter, $is_default ) ) )
+							if ( !$wpdb->query( $wpdb->prepare("INSERT INTO {$bp->profile->table_name_fields} (group_id, parent_id, type, name, description, is_required, is_default_option, field_order, option_order, order_by, can_delete) VALUES (%d, %d, 'option', %s, '', 0, %d, 0, %d, '', 1)", (int)$this->group_id, (int)$parent_id, $option_value, (int)$is_default, (int)$counter ) ) )
 								return false;
 						}
 
@@ -414,7 +414,7 @@ Class BP_XProfile_Field {
 		if ( !$children = $wpdb->get_results($sql) )
 			return false;
 
-		return $children;
+		return apply_filters( 'bp_xprofile_field_get_children', $children );
 	}
 
 	function delete_children() {
