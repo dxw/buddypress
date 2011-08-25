@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: BuddyPress \n"
 "Report-Msgid-Bugs-To: wp-polyglots@lists.automattic.com\n"
-"POT-Creation-Date: 2010-12-20 22:28:00+00:00\n"
+"POT-Creation-Date: 2011-02-23 11:30:34+00:00\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -598,7 +598,7 @@ msgstr ""
 msgid "Options"
 msgstr ""
 
-#: bp-core/bp-core-templatetags.php:736 bp-core.php:379 bp-xprofile.php:183
+#: bp-core/bp-core-templatetags.php:736 bp-core.php:383 bp-xprofile.php:183
 #: bp-themes/bp-default/activity/post-form.php:41
 msgid "My Profile"
 msgstr ""
@@ -667,7 +667,7 @@ msgstr ""
 msgid "Groups"
 msgstr ""
 
-#: bp-core/bp-core-templatetags.php:1032 bp-forums/bp-forums-admin.php:159
+#: bp-core/bp-core-templatetags.php:1032 bp-forums/bp-forums-admin.php:160
 #: bp-themes/bp-default/header.php:68
 msgid "Forums"
 msgstr ""
@@ -850,7 +850,7 @@ msgstr ""
 msgid "Delete Account"
 msgstr ""
 
-#: bp-core/bp-core-settings.php:69 bp-core.php:312
+#: bp-core/bp-core-settings.php:69 bp-core.php:316
 msgid "General Settings"
 msgstr ""
 
@@ -911,116 +911,116 @@ msgstr ""
 msgid "Delete My Account"
 msgstr ""
 
-#: bp-core.php:305 bp-core.php:306
+#: bp-core.php:309 bp-core.php:310
 msgid "BuddyPress"
 msgstr ""
 
-#: bp-core.php:313
+#: bp-core.php:317
 msgid "Component Setup"
 msgstr ""
 
-#: bp-core.php:358 bp-xprofile.php:172
+#: bp-core.php:362 bp-xprofile.php:172
 msgid "Profile"
 msgstr ""
 
-#: bp-core.php:369 bp-groups/bp-groups-templatetags.php:419 bp-xprofile.php:177
+#: bp-core.php:373 bp-groups/bp-groups-templatetags.php:419 bp-xprofile.php:177
 msgid "Public"
 msgstr ""
 
-#: bp-core.php:475
+#: bp-core.php:479
 msgid "User marked as spammer. Spam users are visible only to site admins."
 msgstr ""
 
-#: bp-core.php:477
+#: bp-core.php:481
 msgid "User removed as spammer."
 msgstr ""
 
-#: bp-core.php:511
+#: bp-core.php:515
 msgid "%s has been deleted from the system."
 msgstr ""
 
-#: bp-core.php:513
+#: bp-core.php:517
 msgid "There was an error deleting %s from the system. Please try again."
 msgstr ""
 
-#: bp-core.php:1416
+#: bp-core.php:1420
 msgid "year"
 msgstr ""
 
-#: bp-core.php:1416
+#: bp-core.php:1420
 msgid "years"
 msgstr ""
 
-#: bp-core.php:1417
+#: bp-core.php:1421
 msgid "month"
 msgstr ""
 
-#: bp-core.php:1417
+#: bp-core.php:1421
 msgid "months"
 msgstr ""
 
-#: bp-core.php:1418
+#: bp-core.php:1422
 msgid "week"
 msgstr ""
 
-#: bp-core.php:1418
+#: bp-core.php:1422
 msgid "weeks"
 msgstr ""
 
-#: bp-core.php:1419
+#: bp-core.php:1423
 msgid "day"
 msgstr ""
 
-#: bp-core.php:1419
+#: bp-core.php:1423
 msgid "days"
 msgstr ""
 
-#: bp-core.php:1420
+#: bp-core.php:1424
 msgid "hour"
 msgstr ""
 
-#: bp-core.php:1420
+#: bp-core.php:1424
 msgid "hours"
 msgstr ""
 
-#: bp-core.php:1421
+#: bp-core.php:1425
 msgid "minute"
 msgstr ""
 
-#: bp-core.php:1421
+#: bp-core.php:1425
 msgid "minutes"
 msgstr ""
 
-#: bp-core.php:1422
+#: bp-core.php:1426
 msgid "second"
 msgstr ""
 
-#: bp-core.php:1422 bp-core.php:1474
+#: bp-core.php:1426 bp-core.php:1478
 msgid "seconds"
 msgstr ""
 
-#: bp-core.php:1441
+#: bp-core.php:1445
 msgid "sometime"
 msgstr ""
 
-#: bp-core.php:1469
+#: bp-core.php:1473
 msgctxt "Separator in time since"
 msgid ","
 msgstr ""
 
-#: bp-core.php:1524
+#: bp-core.php:1528
 msgid "not recently active"
 msgstr ""
 
-#: bp-core.php:2034
+#: bp-core.php:2038
 msgid "IMPORTANT: <a href=\"http://codex.buddypress.org/getting-started/upgrading-from-10x/\">Read this before attempting to update BuddyPress</a>"
 msgstr ""
 
-#: bp-core.php:2063
+#: bp-core.php:2067
 msgid "<strong>BuddyPress is almost ready</strong>. You must <a href=\"%s\">update your permalink structure</a> to something other than the default for it to work."
 msgstr ""
 
-#: bp-core.php:2072
+#: bp-core.php:2076
 msgid "<strong>BuddyPress is ready</strong>. You'll need to <a href='%s'>activate a BuddyPress compatible theme</a> to take advantage of all of the features. We've bundled a default theme, but you can always <a href='%s'>install some other compatible themes</a> or <a href='%s'>upgrade your existing WordPress theme</a>."
 msgstr ""
 
@@ -1926,63 +1926,63 @@ msgstr ""
 msgid "NOTE: The forums directory will only work if your bbPress tables are in the same database as your WordPress tables. If you are not using an existing bbPress install you can ignore this message."
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:38
+#: bp-forums/bp-forums-admin.php:39
 msgid "The bb-config.php file was not found at that location, please try again."
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:41
+#: bp-forums/bp-forums-admin.php:42
 msgid "Forums were set up correctly using your existing bbPress install!"
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:42
+#: bp-forums/bp-forums-admin.php:43
 msgid "BuddyPress will now use its internal copy of bbPress to run the forums on your site. If you wish, you can remove your old bbPress installation files, as long as you keep the bb-config.php file in the same location."
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:47
+#: bp-forums/bp-forums-admin.php:48
 msgid "Existing bbPress Installation"
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:48
+#: bp-forums/bp-forums-admin.php:49
 msgid "BuddyPress can make use of your existing bbPress install. Just provide the location of your <code>bb-config.php</code> file, and BuddyPress will do the rest."
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:50 bp-forums/bp-forums-admin.php:78
+#: bp-forums/bp-forums-admin.php:51 bp-forums/bp-forums-admin.php:79
 msgid "Complete Installation"
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:65
+#: bp-forums/bp-forums-admin.php:66
 msgid "All done! Configuration settings have been saved to the file <code>bb-config.php</code> in the root of your WordPress install."
 msgstr ""
 
 #. Just write the contents to screen
 
-#: bp-forums/bp-forums-admin.php:69
+#: bp-forums/bp-forums-admin.php:70
 msgid "A configuration file could not be created. No problem, but you will need to save the text shown below into a file named <code>bb-config.php</code> in the root directory of your WordPress installation before you can start using the forum functionality."
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:75
+#: bp-forums/bp-forums-admin.php:76
 msgid "New bbPress Installation"
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:76
+#: bp-forums/bp-forums-admin.php:77
 msgid ""
 "You've decided to set up a new installation of bbPress for forum management in BuddyPress. This is very simple and is usually just a one click\n"
 "\t\t\t\tprocess. When you're ready, hit the link below."
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:86
+#: bp-forums/bp-forums-admin.php:87
 msgid "bbPress files were not found. To install the forums component you must download a copy of bbPress and make sure it is in the folder: \"%s\""
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:90
+#: bp-forums/bp-forums-admin.php:91
 msgid "Forums in BuddyPress make use of a bbPress installation to function. You can choose to either let BuddyPress set up a new bbPress install, or use an already existing bbPress install. Please choose one of the options below."
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:92
+#: bp-forums/bp-forums-admin.php:93
 msgid "Set up a new bbPress installation"
 msgstr ""
 
-#: bp-forums/bp-forums-admin.php:93
+#: bp-forums/bp-forums-admin.php:94
 msgid "Use an existing bbPress installation"
 msgstr ""
 
