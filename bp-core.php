@@ -65,6 +65,10 @@ if ( !defined( 'BP_SEARCH_SLUG' ) )
 /* Define the slug for the search page */
 if ( !defined( 'BP_HOME_BLOG_SLUG' ) )
 	define( 'BP_HOME_BLOG_SLUG', 'blog' );
+	
+/* Register BuddyPress themes contained within the theme folder */
+if ( function_exists( 'register_theme_folder' ) )
+	register_theme_folder( 'buddypress/bp-themes' );
 
 
 /* "And now for something completely different" .... */
@@ -625,10 +629,18 @@ function bp_core_new_nav_item( $args = '' ) {
 		'position' => $position
 	);
 
-	/***
-	 * If we are not viewing a user, and this is a root component, don't attach the
-	 * default subnav function so we can display a directory or something else.
+ 	/***
+	 * If this nav item is hidden for the displayed user, and
+	 * the logged in user is not the displayed user
+	 * looking at their own profile, don't create the nav item.
 	 */
+	if ( !$show_for_displayed_user && !bp_is_home() )
+		return false;
+		
+	/***
+ 	 * If we are not viewing a user, and this is a root component, don't attach the
+ 	 * default subnav function so we can display a directory or something else.
+ 	 */
 	if ( bp_core_is_root_component( $slug ) && !$bp->displayed_user->id )
 		return;
 
@@ -1533,7 +1545,7 @@ function bp_core_delete_account( $user_id = false ) {
 		$user_id = $bp->loggedin_user->id;
 
 	/* Make sure account deletion is not disabled */
-	if ( ( !(int) get_site_option( 'bp-disable-account-deletion' ) && !is_site_admin() ) )
+	if ( ( '' != get_site_option( 'bp-disable-account-deletion' ) || (int) get_site_option( 'bp-disable-account-deletion' ) ) && !is_site_admin() )
 		return false;
 
 	/* Site admins should not be allowed to be deleted */
@@ -1703,6 +1715,25 @@ function bp_core_add_admin_menu_page( $args = '' ) {
 	return $hookname;
 }
 
+/**
+ * bp_core_boot_spammer()
+ *
+ * When a user logs in, check if they have been marked as a spammer. If then simply
+ * redirect them to the home page and stop them from logging in.
+ * 
+ * @package BuddyPress Core
+ * @param $username The username of the user
+ * @uses delete_usermeta() deletes a row from the wp_usermeta table based on meta_key
+ */
+function bp_core_boot_spammer( $auth_obj, $username ) {
+	global $bp;
+	
+	$user = get_userdatabylogin( $username );
+
+	if ( (int)$user->spam )
+		bp_core_redirect( $bp->root_domain );
+}
+add_filter( 'authenticate', 'bp_core_boot_spammer', 11, 2 );
 
 /**
  * bp_core_remove_data()
