@@ -13,7 +13,9 @@ function xprofile_admin( $message = '', $type = 'error' ) {
 
 	$type = preg_replace( '|[^a-z]|i', '', $type );
 
-	$groups = BP_XProfile_Group::get_all();
+	$groups = BP_XProfile_Group::get( array(
+		'fetch_fields' => true
+	) );
 
 	if ( isset($_GET['mode']) && isset($_GET['group_id']) && 'add_field' == $_GET['mode'] ) {
 		xprofile_admin_manage_field($_GET['group_id']);
@@ -35,10 +37,7 @@ function xprofile_admin( $message = '', $type = 'error' ) {
 
 		<h2><?php _e( 'Profile Field Setup', 'buddypress') ?></h2>
 		<br />
-		<p><?php _e( 'Your users will distinguish themselves through their profile page.
-		   You must give them profile fields that allow them to describe themselves
-			in a way that is relevant to the theme of your social network.', 'buddypress') ?></p>
-
+		<p><?php _e( 'Your users will distinguish themselves through their profile page. You must give them profile fields that allow them to describe themselves in a way that is relevant to the theme of your social network.', 'buddypress') ?></p>
 		<p><?php _e('NOTE: Any fields in the first group will appear on the signup page.', 'buddypress'); ?></p>
 
 		<form action="" id="profile-field-form" method="post">
@@ -62,7 +61,7 @@ function xprofile_admin( $message = '', $type = 'error' ) {
 					<table id="group_<?php echo $groups[$i]->id;?>" class="widefat field-group">
 						<thead>
 						    <tr>
-								<th scope="col">&nbsp;</th>
+								<th scope="col" width="10">&nbsp;</th>
 						    	<th scope="col" colspan="<?php if ( $groups[$i]->can_delete ) { ?>3<?php } else { ?>5<?php } ?>"><?php echo attribute_escape( $groups[$i]->name ); ?></th>
 								<?php if ( $groups[$i]->can_delete ) { ?>
 									<th scope="col"><a class="edit" href="admin.php?page=bp-profile-setup&amp;mode=edit_group&amp;group_id=<?php echo attribute_escape( $groups[$i]->id ); ?>"><?php _e( 'Edit', 'buddypress' ) ?></a></th>
@@ -242,7 +241,7 @@ function xprofile_admin_manage_field( $group_id, $field_id = null ) {
 
 				do_action( 'xprofile_fields_saved_field', $field );
 
-				$groups = BP_XProfile_Group::get_all();
+				$groups = BP_XProfile_Group::get();
 				xprofile_admin( $message, $type );
 			}
 		} else {

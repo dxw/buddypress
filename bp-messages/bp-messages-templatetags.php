@@ -22,13 +22,19 @@ Class BP_Messages_Box_Template {
 	function bp_messages_box_template( $user_id, $box, $per_page, $max, $type ) {
 		$this->pag_page = isset( $_GET['mpage'] ) ? intval( $_GET['mpage'] ) : 1;
 		$this->pag_num = isset( $_GET['num'] ) ? intval( $_GET['num'] ) : $per_page;
+
 		$this->user_id = $user_id;
 		$this->box = $box;
+		$this->type = $type;
 
 		if ( 'notices' == $this->box )
 			$this->threads = BP_Messages_Notice::get_notices();
-		else
-			$this->threads = BP_Messages_Thread::get_current_threads_for_user( $this->user_id, $this->box, $this->pag_num, $this->pag_page, $type );
+		else {
+			$threads = BP_Messages_Thread::get_current_threads_for_user( $this->user_id, $this->box, $this->type, $this->pag_num, $this->pag_page );
+
+			$this->threads = $threads['threads'];
+			$this->total_thread_count = $threads['total'];
+		}
 
 		if ( !$this->threads ) {
 			$this->thread_count = 0;
@@ -39,8 +45,6 @@ Class BP_Messages_Box_Template {
 			if ( !$max || $max >= (int)$total_notice_count ) {
 				if ( 'notices' == $this->box )
 					$this->total_thread_count = (int)$total_notice_count;
-				else
-					$this->total_thread_count = (int)BP_Messages_Thread::get_total_threads_for_user( $this->user_id, $this->box, $type );
 			} else {
 				$this->total_thread_count = (int)$max;
 			}
@@ -60,8 +64,8 @@ Class BP_Messages_Box_Template {
 			'format' => '',
 			'total' => ceil($this->total_thread_count / $this->pag_num),
 			'current' => $this->pag_page,
-			'prev_text' => '&laquo;',
-			'next_text' => '&raquo;',
+			'prev_text' => '&larr;',
+			'next_text' => '&rarr;',
 			'mid_size' => 1
 		));
 	}
@@ -101,10 +105,38 @@ Class BP_Messages_Box_Template {
 	}
 
 	function the_message_thread() {
-		global $thread;
+		global $bp;
 
 		$this->in_the_loop = true;
-		$thread = $this->next_thread();
+		$this->thread = $this->next_thread();
+
+		$last_message_index = count($this->thread->messages) - 1;
+		$this->thread->messages = array_reverse( (array)$this->thread->messages );
+
+		/* Set up the last message data */
+		if ( count($this->thread->messages) > 1 ) {
+			if ( 'inbox' == $this->box ) {
+				foreach ( (array)$this->thread->messages as $key => $message ) {
+					if ( $bp->loggedin_user->id != $message->sender_id ) {
+						$last_message_index = $key;
+						break;
+					}
+				}
+			} else if ( 'sentbox' == $this->box ) {
+				foreach ( (array)$this->thread->messages as $key => $message ) {
+					if ( $bp->loggedin_user->id == $message->sender_id ) {
+						$last_message_index = $key;
+						break;
+					}
+				}
+			}
+		}
+
+		$this->thread->last_message_id = $this->thread->messages[$last_message_index]->id;
+		$this->thread->last_message_date = $this->thread->messages[$last_message_index]->date_sent;
+		$this->thread->last_sender_id = $this->thread->messages[$last_message_index]->sender_id;
+		$this->thread->last_message_subject = $this->thread->messages[$last_message_index]->subject;
+		$this->thread->last_message_content = $this->thread->messages[$last_message_index]->message;
 
 		if ( 0 == $this->current_thread ) // loop has just started
 			do_action('loop_start');
@@ -166,7 +198,8 @@ function bp_message_thread_subject() {
 	echo bp_get_message_thread_subject();
 }
 	function bp_get_message_thread_subject() {
-		global $messages_template;
+		global $messages_template, $message_template_subject;
+
 		return apply_filters( 'bp_get_message_thread_subject', stripslashes_deep( $messages_template->thread->last_message_subject ) );
 	}
 
@@ -175,15 +208,17 @@ function bp_message_thread_excerpt() {
 }
 	function bp_get_message_thread_excerpt() {
 		global $messages_template;
-		return apply_filters( 'bp_get_message_thread_excerpt', bp_create_excerpt($messages_template->thread->last_message_message, 20) );
+
+		return apply_filters( 'bp_get_message_thread_excerpt', strip_tags( bp_create_excerpt( $messages_template->thread->last_message_content, 10 ) ) );
 	}
 
 function bp_message_thread_from() {
 	echo bp_get_message_thread_from();
 }
 	function bp_get_message_thread_from() {
-		global $messages_template;
-		return apply_filters( 'bp_get_message_thread_from', bp_core_get_userlink($messages_template->thread->last_sender_id) );
+		global $messages_template, $bp;
+
+		return apply_filters( 'bp_get_message_thread_from', bp_core_get_userlink( $messages_template->thread->last_sender_id ) );
 	}
 
 function bp_message_thread_to() {
@@ -236,15 +271,17 @@ function bp_message_thread_last_post_date() {
 }
 	function bp_get_message_thread_last_post_date() {
 		global $messages_template;
-		echo apply_filters( 'bp_get_message_thread_last_post_date', bp_format_time( strtotime($messages_template->thread->last_post_date) ) );
+
+		return apply_filters( 'bp_get_message_thread_last_post_date', bp_format_time( strtotime( $messages_template->thread->last_message_date ) ) );
 	}
 
 function bp_message_thread_avatar() {
 	echo bp_get_message_thread_avatar();
 }
 	function bp_get_message_thread_avatar() {
-		global $messages_template;
-		echo apply_filters( 'bp_get_message_thread_avatar', bp_core_fetch_avatar( array( 'item_id' => $messages_template->thread->last_sender_id, 'type' => 'thumb' ) ) );
+		global $messages_template, $bp;
+
+		return apply_filters( 'bp_get_message_thread_avatar', bp_core_fetch_avatar( array( 'item_id' => $messages_template->thread->last_sender_id, 'type' => 'thumb' ) ) );
 	}
 
 function bp_message_thread_view() {
@@ -271,10 +308,11 @@ function bp_messages_pagination() {
 function bp_messages_pagination_count() {
 	global $messages_template;
 
-	$from_num = intval( ( $messages_template->pag_page - 1 ) * $messages_template->pag_num ) + 1;
-	$to_num = ( $from_num + ( $messages_template->pag_num - 1 ) > $messages_template->total_thread_count ) ? $messages_template->total_thread_count : $from_num + ( $messages_template->pag_num - 1) ;
+	$from_num = bp_core_number_format( intval( ( $messages_template->pag_page - 1 ) * $messages_template->pag_num ) + 1 );
+	$to_num = bp_core_number_format( ( $from_num + ( $messages_template->pag_num - 1 ) > $messages_template->total_thread_count ) ? $messages_template->total_thread_count : $from_num + ( $messages_template->pag_num - 1 ) );
+	$total = bp_core_number_format( $messages_template->total_thread_count );
 
-	echo sprintf( __( 'Viewing message %d to %d (of %d messages)', 'buddypress' ), $from_num, $to_num, $messages_template->total_thread_count ); ?> &nbsp;
+	echo sprintf( __( 'Viewing message %s to %s (of %s messages)', 'buddypress' ), $from_num, $to_num, $total ); ?> &nbsp;
 	<span class="ajax-loader"></span><?php
 }
 
@@ -302,32 +340,31 @@ function bp_messages_subject_value() {
 	echo bp_get_messages_subject_value();
 }
 	function bp_get_messages_subject_value() {
-		return apply_filters( 'bp_get_messages_subject_value', $_COOKIE['bp_messages_subject'] );
+		return apply_filters( 'bp_get_messages_subject_value', $_POST['subject'] );
 	}
 
 function bp_messages_content_value() {
 	echo bp_get_messages_content_value();
 }
 	function bp_get_messages_content_value() {
-		return apply_filters( 'bp_get_messages_content_value', $_COOKIE['bp_messages_content'] );
+		return apply_filters( 'bp_get_messages_content_value', $_POST['content'] );
 	}
 
 function bp_messages_options() {
 	global $bp;
-
-	if ( $bp->current_action != 'sentbox' ) {
 ?>
-		<?php _e( 'Select:', 'buddypress' ) ?>
-		<select name="message-type-select" id="message-type-select">
-			<option value=""></option>
-			<option value="read"><?php _e('Read', 'buddypress') ?></option>
-			<option value="unread"><?php _e('Unread', 'buddypress') ?></option>
-			<option value="all"><?php _e('All', 'buddypress') ?></option>
-		</select> &nbsp;
+	<?php _e( 'Select:', 'buddypress' ) ?>
+	<select name="message-type-select" id="message-type-select">
+		<option value=""></option>
+		<option value="read"><?php _e('Read', 'buddypress') ?></option>
+		<option value="unread"><?php _e('Unread', 'buddypress') ?></option>
+		<option value="all"><?php _e('All', 'buddypress') ?></option>
+	</select> &nbsp;
+	<?php if ( $bp->current_action != 'sentbox' && $bp->current_action != 'notices' ) : ?>
 		<a href="#" id="mark_as_read"><?php _e('Mark as Read', 'buddypress') ?></a> &nbsp;
 		<a href="#" id="mark_as_unread"><?php _e('Mark as Unread', 'buddypress') ?></a> &nbsp;
-	<?php } ?>
-		<a href="#" id="delete_<?php echo $bp->current_action ?>_messages"><?php _e('Delete Selected', 'buddypress') ?></a> &nbsp;
+	<?php endif; ?>
+	<a href="#" id="delete_<?php echo $bp->current_action ?>_messages"><?php _e('Delete Selected', 'buddypress') ?></a> &nbsp;
 <?php
 }
 
@@ -414,7 +451,11 @@ function bp_message_get_notices() {
 	global $userdata;
 
 	$notice = BP_Messages_Notice::get_active();
-	$closed_notices = get_usermeta( $userdata->ID, 'closed_notices');
+
+	if ( empty( $notice ) )
+		return false;
+
+	$closed_notices = get_usermeta( $userdata->ID, 'closed_notices' );
 
 	if ( !$closed_notices )
 		$closed_notices = array();
@@ -422,15 +463,26 @@ function bp_message_get_notices() {
 	if ( is_array($closed_notices) ) {
 		if ( !in_array( $notice->id, $closed_notices ) && $notice->id ) {
 			?>
-			<div class="notice" id="<?php echo $notice->id ?>">
-				<h5><?php echo stripslashes($notice->subject) ?></h5>
-				<?php echo stripslashes($notice->message) ?>
-				<a href="#" id="close-notice"><?php _e( 'Close', 'buddypress' ) ?></a>
+			<div id="message" class="info notice" rel="n-<?php echo $notice->id ?>">
+				<p>
+					<strong><?php echo stripslashes( wp_filter_kses( $notice->subject ) ) ?></strong><br />
+					<?php echo stripslashes( wp_filter_kses( $notice->message) ) ?>
+					<a href="#" id="close-notice"><?php _e( 'Close', 'buddypress' ) ?></a>
+				</p>
 			</div>
 			<?php
 		}
 	}
 }
+
+function bp_send_private_message_link() {
+	echo bp_get_send_private_message_link();
+}
+	function bp_get_send_private_message_link() {
+		global $bp;
+
+		return apply_filters( 'bp_get_send_public_message_link', $bp->loggedin_user->domain . $bp->messages->slug . '/compose/?r=' . bp_core_get_username( $bp->displayed_user->user_id, $bp->displayed_user->userdata->user_nicename, $bp->displayed_user->userdata->user_login ) );
+	}
 
 function bp_send_message_button() {
 	echo bp_get_send_message_button();
@@ -438,12 +490,10 @@ function bp_send_message_button() {
 	function bp_get_send_message_button() {
 		global $bp;
 
-		if ( bp_is_home() || !is_user_logged_in() )
+		if ( bp_is_my_profile() || !is_user_logged_in() )
 			return false;
 
-		$ud = get_userdata( $bp->displayed_user->id );
-
-		return apply_filters( 'bp_get_send_message_button', '<div class="generic-button"><a class="send-message" title="' . __( 'Send Message', 'buddypress' ) . '" href="' . $bp->loggedin_user->domain . $bp->messages->slug . '/compose/?r=' . $ud->user_login . '">' . __( 'Send Message', 'buddypress' ) . '</a></div>' );
+		return apply_filters( 'bp_get_send_message_button', '<div class="generic-button"><a class="send-message" title="' . __( 'Send Message', 'buddypress' ) . '" href="' . $bp->loggedin_user->domain . $bp->messages->slug . '/compose/?r=' . bp_core_get_username( $bp->displayed_user->user_id, $bp->displayed_user->userdata->user_nicename, $bp->displayed_user->userdata->user_login ) . '">' . __( 'Send Message', 'buddypress' ) . '</a></div>' );
 	}
 
 function bp_message_loading_image_src() {
@@ -504,6 +554,13 @@ class BP_Messages_Thread_Template {
 
 		$this->thread = new BP_Messages_Thread( $thread_id, true );
 		$this->message_count = count( $this->thread->messages );
+
+		$last_message_index = $this->message_count - 1;
+		$this->thread->last_message_id = $this->thread->messages[$last_message_index]->id;
+		$this->thread->last_message_date = $this->thread->messages[$last_message_index]->date_sent;
+		$this->thread->last_sender_id = $this->thread->messages[$last_message_index]->sender_id;
+		$this->thread->last_message_subject = $this->thread->messages[$last_message_index]->subject;
+		$this->thread->last_message_content = $this->thread->messages[$last_message_index]->message;
 	}
 
 	function has_messages() {
@@ -603,15 +660,17 @@ function bp_the_thread_recipients() {
 	echo bp_get_the_thread_recipients();
 }
 	function bp_get_the_thread_recipients() {
-		global $thread_template;
+		global $thread_template, $bp;
 
 		if ( count($thread_template->thread->recipients) >= 5 )
 			return apply_filters( 'bp_get_the_thread_recipients', sprintf( __( '%d Recipients', 'buddypress' ), count($thread_template->thread->recipients) ) );
 
-		foreach( $thread_template->thread->recipients as $recipient )
-			$recipient_links[] = bp_core_get_userlink( $recipient );
+		foreach( (array)$thread_template->thread->recipients as $recipient ) {
+			if ( $recipient->user_id !== $bp->loggedin_user->id )
+				$recipient_links[] = bp_core_get_userlink( $recipient->user_id );
+		}
 
-		return apply_filters( 'bp_get_the_thread_recipients', implode( ', ', $recipient_links ) );
+		return apply_filters( 'bp_get_the_thread_recipients', implode( ', ', (array)$recipient_links ) );
 	}
 
 function bp_the_thread_message_alt_class() {
@@ -681,93 +740,5 @@ function bp_the_thread_message_content() {
 
 		return apply_filters( 'bp_get_the_thread_message_content', $thread_template->message->message );
 	}
-
-
-/*** DEPRECATED FUNCTIONS (DO NOT USE) **********************************************************/
-
-/* DEPRECATED - please use the view message template loop. */
-function messages_view_thread( $thread_id ) {
-	global $bp;
-
-	$thread = new BP_Messages_Thread( $thread_id, true );
-
-	if ( !$thread->has_access ) {
-		unset($_GET['mode']); ?>
-		<div id="message" class="error">
-			<p><?php _e( 'There was an error when viewing that message', 'buddypress' ) ?></p>
-		</div>
-	<?php
-	} else {
-		if ( $thread->messages ) { ?>
-			<?php $thread->mark_read() ?>
-
-			<div class="wrap">
-				<h2 id="message-subject"><?php echo $thread->subject; ?></h2>
-				<table class="form-table">
-					<tbody>
-						<tr>
-							<td>
-								<img src="<?php echo $bp->messages->image_base ?>/email_open.gif" alt="Message" style="vertical-align: top;" /> &nbsp;
-								<?php _e('Sent between ', 'buddypress') ?> <?php echo BP_Messages_Thread::get_recipient_links($thread->recipients) ?>
-								<?php _e('and', 'buddypress') ?> <?php echo bp_core_get_userlink($bp->loggedin_user->id) ?>.
-							</td>
-						</tr>
-					</tbody>
-				</table>
-
-		<?php
-			$counter = 0;
-
-			foreach ( $thread->messages as $message ) {
-				$alt = ( $counter % 2 == 1 ) ? ' alt' : '';
-				?>
-					<a name="<?php echo 'm-' . $message->id ?>"></a>
-					<div class="message-box<?php echo $alt ?>">
-						<div class="avatar-box">
-							<?php echo apply_filters( 'bp_get_message_sender_avatar',  bp_core_fetch_avatar( array( 'item_id' => $message->sender_id, 'type' => 'thumb' ) ) ) ?>
-							<h3><?php echo apply_filters( 'bp_get_message_sender_id', bp_core_get_userlink( $message->sender_id ) ) ?></h3>
-							<small><?php echo apply_filters( 'bp_get_message_date_sent', bp_format_time( strtotime($message->date_sent ) ) ) ?></small>
-						</div>
-
-						<?php do_action( 'messages_custom_fields_output_before' ) ?>
-
-						<?php echo apply_filters( 'bp_get_the_message_thread_content', stripslashes($message->message) ); ?>
-
-						<?php do_action( 'messages_custom_fields_output_after' ) ?>
-
-						<div class="clear"></div>
-					</div>
-				<?php
-				$counter++;
-			}
-
-			?>
-				<form id="send-reply" action="<?php bp_messages_form_action() ?>" method="post">
-					<div class="message-box">
-							<div id="messagediv">
-								<div class="avatar-box">
-									<?php echo  bp_core_fetch_avatar( array( 'item_id' => $bp->loggedin_user->id, 'type' => 'thumb' ) ); ?>
-
-									<h3><?php _e("Reply: ", 'buddypress') ?></h3>
-								</div>
-								<label for="reply"></label>
-								<div>
-									<textarea name="content" id="message_content" rows="15" cols="40"><?php echo htmlspecialchars( wp_filter_kses( $content ) ); ?></textarea>
-								</div>
-							</div>
-							<p class="submit">
-								<input type="submit" name="send" value="<?php _e( 'Send Reply', 'buddypress' ) ?> &rarr;" id="send_reply_button"/>
-							</p>
-							<input type="hidden" id="thread_id" name="thread_id" value="<?php echo attribute_escape( $thread->thread_id ); ?>" />
-							<input type="hidden" name="subject" id="subject" value="<?php _e('Re: ', 'buddypress'); echo str_replace( 'Re: ', '', $thread->last_message_subject); ?>" />
-					</div>
-
-					<?php wp_nonce_field( 'messages_send_message', '_wpnonce_send_message' ) ?>
-				</form>
-			</div>
-			<?php
-		}
-	}
-}
 
 ?>

@@ -11,8 +11,8 @@ function friends_notification_new_request( $friendship_id, $initiator_id, $frien
 	$ud = get_userdata( $friend_id );
 	$initiator_ud = get_userdata( $initiator_id );
 
-	$all_requests_link = bp_core_get_user_domain( $friend_id ) . 'friends/requests/';
-	$settings_link = bp_core_get_user_domain( $friend_id ) . $bp->settings->slug . '/notifications';
+	$all_requests_link = bp_core_get_user_domain( $friend_id ) . BP_FRIENDS_SLUG . '/requests/';
+	$settings_link = bp_core_get_user_domain( $friend_id ) .  BP_SETTINGS_SLUG . '/notifications';
 
 	$initiator_link = bp_core_get_user_domain( $initiator_id );
 
@@ -32,10 +32,13 @@ To view %s's profile: %s
 
 	$message .= sprintf( __( 'To disable these notifications please log in and go to: %s', 'buddypress' ), $settings_link );
 
-	// Send it
+	/* Send the message */
+	$to = apply_filters( 'friends_notification_new_request_to', $to );
+	$subject = apply_filters( 'friends_notification_new_request_subject', $subject, $initiator_name );
+	$message = apply_filters( 'friends_notification_new_request_message', $message, $initiator_name, $initiator_link, $all_requests_link );
+
 	wp_mail( $to, $subject, $message );
 }
-
 
 function friends_notification_accepted_request( $friendship_id, $initiator_id, $friend_id ) {
 	global $bp;
@@ -50,7 +53,7 @@ function friends_notification_accepted_request( $friendship_id, $initiator_id, $
 	$ud = get_userdata( $initiator_id );
 
 	$friend_link = bp_core_get_user_domain( $friend_id );
-	$settings_link = bp_core_get_user_domain( $initiator_id ) . $bp->settings->slug . '/notifications';
+	$settings_link = bp_core_get_user_domain( $initiator_id ) .  BP_SETTINGS_SLUG . '/notifications';
 
 	// Set up and send the message
 	$to = $ud->user_email;
@@ -66,9 +69,12 @@ To view %s\'s profile: %s
 
 	$message .= sprintf( __( 'To disable these notifications please log in and go to: %s', 'buddypress' ), $settings_link );
 
-	// Send it
+	/* Send the message */
+	$to = apply_filters( 'friends_notification_accepted_request_to', $to );
+	$subject = apply_filters( 'friends_notification_accepted_request_subject', $subject, $friend_name );
+	$message = apply_filters( 'friends_notification_accepted_request_message', $message, $friend_name, $friend_link );
+
 	wp_mail( $to, $subject, $message );
 }
-
 
 ?>

@@ -9,10 +9,6 @@ if ( !defined( 'BP_FRIENDS_SLUG' ) )
 require ( BP_PLUGIN_DIR . '/bp-friends/bp-friends-classes.php' );
 require ( BP_PLUGIN_DIR . '/bp-friends/bp-friends-templatetags.php' );
 
-/* Include deprecated functions if settings allow */
-if ( !defined( 'BP_IGNORE_DEPRECATED' ) )
-	require ( BP_PLUGIN_DIR . '/bp-friends/deprecated/bp-friends-deprecated.php' );
-
 function friends_install() {
 	global $wpdb, $bp;
 
@@ -51,8 +47,7 @@ function friends_setup_globals() {
 
 	do_action( 'friends_setup_globals' );
 }
-add_action( 'plugins_loaded', 'friends_setup_globals', 5 );
-add_action( 'admin_menu', 'friends_setup_globals', 2 );
+add_action( 'bp_setup_globals', 'friends_setup_globals' );
 
 function friends_check_installed() {
 	global $wpdb, $bp;
@@ -61,7 +56,7 @@ function friends_check_installed() {
 		return false;
 
 	/* Need to check db tables exist, activate hook no-worky in mu-plugins folder. */
-	if ( get_site_option('bp-friends-db-version') < BP_FRIENDS_DB_VERSION )
+	if ( $bp->site_options['bp-friends-db-version'] < BP_FRIENDS_DB_VERSION )
 		friends_install();
 }
 add_action( 'admin_menu', 'friends_check_installed' );
@@ -70,16 +65,16 @@ function friends_setup_nav() {
 	global $bp;
 
 	/* Add 'Friends' to the main navigation */
-	bp_core_new_nav_item( array( 'name' => __('Friends', 'buddypress'), 'slug' => $bp->friends->slug, 'position' => 60, 'screen_function' => 'friends_screen_my_friends', 'default_subnav_slug' => 'my-friends', 'item_css_id' => $bp->friends->id ) );
+	bp_core_new_nav_item( array( 'name' => sprintf( __( 'Friends <span>(%d)</span>', 'buddypress' ), friends_get_total_friend_count() ), 'slug' => $bp->friends->slug, 'position' => 60, 'screen_function' => 'friends_screen_my_friends', 'default_subnav_slug' => 'my-friends', 'item_css_id' => $bp->friends->id ) );
 
 	$friends_link = $bp->loggedin_user->domain . $bp->friends->slug . '/';
 
 	/* Add the subnav items to the friends nav item */
 	bp_core_new_subnav_item( array( 'name' => __( 'My Friends', 'buddypress' ), 'slug' => 'my-friends', 'parent_url' => $friends_link, 'parent_slug' => $bp->friends->slug, 'screen_function' => 'friends_screen_my_friends', 'position' => 10, 'item_css_id' => 'friends-my-friends' ) );
-	bp_core_new_subnav_item( array( 'name' => __( 'Requests', 'buddypress' ), 'slug' => 'requests', 'parent_url' => $friends_link, 'parent_slug' => $bp->friends->slug, 'screen_function' => 'friends_screen_requests', 'position' => 20, 'user_has_access' => bp_is_home() ) );
+	bp_core_new_subnav_item( array( 'name' => __( 'Requests', 'buddypress' ), 'slug' => 'requests', 'parent_url' => $friends_link, 'parent_slug' => $bp->friends->slug, 'screen_function' => 'friends_screen_requests', 'position' => 20, 'user_has_access' => bp_is_my_profile() ) );
 
 	if ( $bp->current_component == $bp->friends->slug ) {
-		if ( bp_is_home() ) {
+		if ( bp_is_my_profile() ) {
 			$bp->bp_options_title = __( 'My Friends', 'buddypress' );
 		} else {
 			$bp->bp_options_avatar = bp_core_fetch_avatar( array( 'item_id' => $bp->displayed_user->id, 'type' => 'thumb' ) );
@@ -109,7 +104,7 @@ function friends_screen_my_friends() {
 
 	do_action( 'friends_screen_my_friends' );
 
-	bp_core_load_template( apply_filters( 'friends_template_my_friends', 'friends/index' ) );
+	bp_core_load_template( apply_filters( 'friends_template_my_friends', 'members/single/home' ) );
 }
 
 function friends_screen_requests() {
@@ -130,7 +125,6 @@ function friends_screen_requests() {
 		/* Check the nonce */
 		check_admin_referer( 'friends_reject_friendship' );
 
-
 		if ( friends_reject_friendship( $bp->action_variables[1] ) ) {
 			bp_core_add_message( __( 'Friendship rejected', 'buddypress' ) );
 		} else {
@@ -141,12 +135,7 @@ function friends_screen_requests() {
 
 	do_action( 'friends_screen_requests' );
 
-	bp_core_load_template( apply_filters( 'friends_template_requests', 'friends/requests' ) );
-}
-
-function friends_screen_friend_finder() {
-	do_action( 'friends_screen_friend_finder' );
- 	bp_core_load_template( apply_filters( 'friends_template_friend_finder', 'friends/friend-finder' ) );
+	bp_core_load_template( apply_filters( 'friends_template_requests', 'members/single/home' ) );
 }
 
 function friends_screen_notification_settings() {
@@ -278,26 +267,27 @@ function friends_record_activity( $args = '' ) {
 
 	$defaults = array(
 		'user_id' => $bp->loggedin_user->id,
-		'content' => false,
-		'primary_link' => false,
-		'component_name' => $bp->friends->id,
-		'component_action' => false,
+		'action' => '',
+		'content' => '',
+		'primary_link' => '',
+		'component' => $bp->friends->id,
+		'type' => false,
 		'item_id' => false,
 		'secondary_item_id' => false,
-		'recorded_time' => time(),
+		'recorded_time' => gmdate( "Y-m-d H:i:s" ),
 		'hide_sitewide' => false
 	);
 
 	$r = wp_parse_args( $args, $defaults );
 	extract( $r, EXTR_SKIP );
 
-	return bp_activity_add( array( 'user_id' => $user_id, 'content' => $content, 'primary_link' => $primary_link, 'component_name' => $component_name, 'component_action' => $component_action, 'item_id' => $item_id, 'secondary_item_id' => $secondary_item_id, 'recorded_time' => $recorded_time, 'hide_sitewide' => $hide_sitewide ) );
+	return bp_activity_add( array( 'user_id' => $user_id, 'action' => $action, 'content' => $content, 'primary_link' => $primary_link, 'component' => $component, 'type' => $type, 'item_id' => $item_id, 'secondary_item_id' => $secondary_item_id, 'recorded_time' => $recorded_time, 'hide_sitewide' => $hide_sitewide ) );
 }
 
 function friends_delete_activity( $args ) {
 	if ( function_exists('bp_activity_delete_by_item_id') ) {
 		extract( (array)$args );
-		bp_activity_delete_by_item_id( array( 'item_id' => $item_id, 'component_name' => $bp->friends->id, 'component_action' => $component_action, 'user_id' => $user_id, 'secondary_item_id' => $secondary_item_id ) );
+		bp_activity_delete_by_item_id( array( 'item_id' => $item_id, 'component' => $bp->friends->id, 'type' => $type, 'user_id' => $user_id, 'secondary_item_id' => $secondary_item_id ) );
 	}
 }
 
@@ -311,7 +301,7 @@ function friends_register_activity_actions() {
 
 	do_action( 'friends_register_activity_actions' );
 }
-add_action( 'plugins_loaded', 'friends_register_activity_actions' );
+add_action( 'bp_register_activity_actions', 'friends_register_activity_actions' );
 
 function friends_format_notifications( $action, $item_id, $secondary_item_id, $total_items ) {
 	global $bp;
@@ -322,7 +312,7 @@ function friends_format_notifications( $action, $item_id, $secondary_item_id, $t
 				return apply_filters( 'bp_friends_multiple_friendship_accepted_notification', '<a href="' . $bp->loggedin_user->domain . $bp->friends->slug . '/my-friends/newest" title="' . __( 'My Friends', 'buddypress' ) . '">' . sprintf( __('%d friends accepted your friendship requests', 'buddypress' ), (int)$total_items ) . '</a>', (int)$total_items );
 			} else {
 				$user_fullname = bp_core_get_user_displayname( $item_id );
-				$user_url = bp_core_get_userurl( $item_id );
+				$user_url = bp_core_get_user_domain( $item_id );
 				return apply_filters( 'bp_friends_single_friendship_accepted_notification', '<a href="' . $user_url . '?new" title="' . $user_fullname .'\'s profile">' . sprintf( __( '%s accepted your friendship request', 'buddypress' ), $user_fullname ) . '</a>', $user_fullname );
 			}
 		break;
@@ -332,7 +322,7 @@ function friends_format_notifications( $action, $item_id, $secondary_item_id, $t
 				return apply_filters( 'bp_friends_multiple_friendship_request_notification', '<a href="' . $bp->loggedin_user->domain . $bp->friends->slug . '/requests" title="' . __( 'Friendship requests', 'buddypress' ) . '">' . sprintf( __('You have %d pending friendship requests', 'buddypress' ), (int)$total_items ) . '</a>', $total_items );
 			} else {
 				$user_fullname = bp_core_get_user_displayname( $item_id );
-				$user_url = bp_core_get_userurl( $item_id );
+				$user_url = bp_core_get_user_domain( $item_id );
 				return apply_filters( 'bp_friends_single_friendship_request_notification', '<a href="' . $bp->loggedin_user->domain . $bp->friends->slug . '/requests" title="' . __( 'Friendship requests', 'buddypress' ) . '">' . sprintf( __('You have a friendship request from %s', 'buddypress' ), $user_fullname ) . '</a>', $user_fullname );
 			}
 		break;
@@ -352,206 +342,6 @@ function friends_format_notifications( $action, $item_id, $secondary_item_id, $t
  * hand off to a database class for data access, then return
  * true or false on success or failure.
  */
-
-function friends_check_user_has_friends( $user_id ) {
-	$friend_count = get_usermeta( $user_id, 'total_friend_count');
-
-	if ( empty( $friend_count ) )
-		return false;
-
-	if ( !(int)$friend_count )
-		return false;
-
-	return true;
-}
-
-function friends_get_friend_user_ids( $user_id, $friend_requests_only = false, $assoc_arr = false, $filter = false ) {
-	return BP_Friends_Friendship::get_friend_user_ids( $user_id, $friend_requests_only, $assoc_arr, $filter );
-}
-
-function friends_get_friendship_ids( $user_id, $friend_requests_only = false ) {
-	return BP_Friends_Friendship::get_friendship_ids( $user_id, $friend_requests_only );
-}
-
-function friends_search_friends( $search_terms, $user_id, $pag_num = 10, $pag_page = 1 ) {
-	return BP_Friends_Friendship::search_friends( $search_terms, $user_id, $pag_num, $pag_page );
-}
-
-function friends_get_friendship_requests( $user_id ) {
-	$fship_ids = friends_get_friendship_ids( $user_id, true );
-
-	return array( 'requests' => $fship_ids, 'total' => count($fship_ids) );
-}
-
-function friends_get_recently_active( $user_id, $pag_num = false, $pag_page = false, $filter = false ) {
-	if ( $filter )
-		$friend_ids = friends_search_friends( $filter, $user_id, false );
-	else
-		$friend_ids = friends_get_friend_user_ids( $user_id );
-
-	if ( !$friend_ids )
-		return false;
-
-	if ( $filter )
-		$friend_ids = $friend_ids['friends'];
-
-	$ids_and_activity = friends_get_bulk_last_active( implode( ',', (array)$friend_ids ) );
-
-	if ( !$ids_and_activity )
-		return false;
-
-	$total_friends = count( $ids_and_activity );
-
-	if ( $pag_num && $pag_page )
-		return array( 'friends' => array_slice( $ids_and_activity, intval( ( $pag_page - 1 ) * $pag_num), intval( $pag_num ) ), 'total' => $total_friends );
-	else
-		return array( 'friends' => $ids_and_activity, 'total' => $total_friends );
-}
-
-function friends_get_alphabetically( $user_id, $pag_num = false, $pag_page = false, $filter = false ) {
-	if ( $filter )
-		$friend_ids = friends_search_friends( $filter, $user_id, false );
-	else
-		$friend_ids = friends_get_friend_user_ids( $user_id );
-
-	if ( !$friend_ids )
-		return false;
-
-	if ( $filter )
-		$friend_ids = $friend_ids['friends'];
-
-	$sorted_ids = BP_Friends_Friendship::sort_by_name( implode( ',', $friend_ids ) );
-
-	if ( !$sorted_ids )
-		return false;
-
-	$total_friends = count( $sorted_ids );
-
-	if ( $pag_num && $pag_page )
-		return array( 'friends' => array_slice( $sorted_ids, intval( ( $pag_page - 1 ) * $pag_num), intval( $pag_num ) ), 'total' => $total_friends );
-	else
-		return array( 'friends' => $sorted_ids, 'total' => $total_friends );
-}
-
-function friends_get_newest( $user_id, $pag_num = false, $pag_page = false, $filter = false ) {
-	if ( $filter )
-		$friend_ids = friends_search_friends( $filter, $user_id, false );
-	else
-		$friend_ids = friends_get_friend_user_ids( $user_id );
-
-	if ( !$friend_ids )
-		return false;
-
-	if ( $filter )
-		$friend_ids = $friend_ids['friends'];
-
-	$total_friends = count( $friend_ids );
-
-	if ( $pag_num && $pag_page )
-		return array( 'friends' => array_slice( $friend_ids, intval( ( $pag_page - 1 ) * $pag_num), intval( $pag_num ) ), 'total' => $total_friends );
-	else
-		return array( 'friends' => $friend_ids, 'total' => $total_friends );
-}
-
-function friends_get_bulk_last_active( $friend_ids ) {
-	return BP_Friends_Friendship::get_bulk_last_active( $friend_ids );
-}
-
-function friends_get_friends_list( $user_id ) {
-	global $bp;
-
-	$friend_ids = BP_Friends_Friendship::get_friend_user_ids( $user_id );
-
-	if ( !$friend_ids )
-		return false;
-
-	for ( $i = 0; $i < count($friend_ids); $i++ ) {
-		if ( function_exists('bp_user_fullname') )
-			$display_name = bp_core_get_user_displayname( $friend_ids[$i] );
-
-		if ( $display_name != ' ' ) {
-			$friends[] = array(
-				'id' => $friend_ids[$i],
-				'full_name' => $display_name
-			);
-		}
-	}
-
-	if ( $friends && is_array($friends) )
-		usort($friends, 'friends_sort_by_name');
-
-	if ( !$friends )
-		return false;
-
-	return $friends;
-}
-
-	function friends_sort_by_name($a, $b) {
-	    return strcasecmp($a['full_name'], $b['full_name']);
-	}
-
-function friends_get_friends_invite_list( $user_id = false, $group_id ) {
-	global $bp;
-
-	if ( !$user_id )
-		$user_id = $bp->loggedin_user->id;
-
-	$friend_ids = friends_get_alphabetically( $user_id );
-
-	if ( (int) $friend_ids['total'] < 1 )
-		return false;
-
-	for ( $i = 0; $i < count($friend_ids['friends']); $i++ ) {
-		if ( groups_check_user_has_invite( $friend_ids['friends'][$i]->user_id, $group_id ) || groups_is_user_member( $friend_ids['friends'][$i]->user_id, $group_id ) )
-			continue;
-
-		$display_name = bp_core_get_user_displayname( $friend_ids['friends'][$i]->user_id );
-
-		if ( $display_name != ' ' ) {
-			$friends[] = array(
-				'id' => $friend_ids['friends'][$i]->user_id,
-				'full_name' => $display_name
-			);
-		}
-	}
-
-	if ( !$friends )
-		return false;
-
-	return $friends;
-}
-
-function friends_count_invitable_friends( $user_id, $group_id ) {
-	return BP_Friends_Friendship::get_invitable_friend_count( $user_id, $group_id );
-}
-
-function friends_get_friend_count_for_user( $user_id ) {
-	return BP_Friends_Friendship::total_friend_count( $user_id );
-}
-
-function friends_search_users( $search_terms, $user_id, $pag_num = false, $pag_page = false ) {
-	global $bp;
-
-	$user_ids = BP_Friends_Friendship::search_users( $search_terms, $user_id, $pag_num, $pag_page );
-
-	if ( !$user_ids )
-		return false;
-
-	for ( $i = 0; $i < count($user_ids); $i++ ) {
-		$users[] = new BP_Core_User($user_ids[$i]);
-	}
-
-	return array( 'users' => $users, 'count' => BP_Friends_Friendship::search_users_count($search_terms) );
-}
-
-function friends_check_friendship( $user_id, $possible_friend_id ) {
-	global $bp;
-
-	if ( 'is_friend' == BP_Friends_Friendship::check_is_friend( $user_id, $possible_friend_id ) )
-		return true;
-
-	return false;
-}
 
 function friends_add_friend( $initiator_userid, $friend_userid, $force_accept = false ) {
 	global $bp;
@@ -598,7 +388,7 @@ function friends_remove_friend( $initiator_userid, $friend_userid ) {
 	$friendship = new BP_Friends_Friendship( $friendship_id );
 
 	// Remove the activity stream item for the user who canceled the friendship
-	friends_delete_activity( array( 'item_id' => $friendship_id, 'component_action' => 'friendship_accepted', 'user_id' => $bp->displayed_user->id ) );
+	friends_delete_activity( array( 'item_id' => $friendship_id, 'type' => 'friendship_accepted', 'user_id' => $bp->displayed_user->id ) );
 
 	do_action( 'friends_friendship_deleted', $friendship_id, $initiator_userid, $friend_userid );
 
@@ -628,23 +418,19 @@ function friends_accept_friendship( $friendship_id ) {
 		$initiator_link = bp_core_get_userlink( $friendship->initiator_user_id );
 		$friend_link = bp_core_get_userlink( $friendship->friend_user_id );
 
-		$primary_link = apply_filters( 'friends_activity_friendship_accepted_primary_link', bp_core_get_userurl( $friendship->initiator_user_id ), &$friendship );
-
 		/* Record in activity streams for the initiator */
 		friends_record_activity( array(
 			'user_id' => $friendship->initiator_user_id,
-			'component_action' => 'friendship_created',
-			'content' => apply_filters( 'friends_activity_friendship_accepted', sprintf( __( '%s and %s are now friends', 'buddypress' ), $initiator_link, $friend_link ), &$friendship ),
-			'primary_link' => $primary_link,
+			'type' => 'friendship_created',
+			'action' => apply_filters( 'friends_activity_friendship_accepted_action', sprintf( __( '%s and %s are now friends', 'buddypress' ), $initiator_link, $friend_link ), &$friendship ),
 			'item_id' => $friendship_id
 		) );
 
 		/* Record in activity streams for the friend */
 		friends_record_activity( array(
 			'user_id' => $friendship->friend_user_id,
-			'component_action' => 'friendship_created',
-			'content' => apply_filters( 'friends_activity_friendship_accepted', sprintf( __( '%s and %s are now friends', 'buddypress' ), $friend_link, $initiator_link ), &$friendship ),
-			'primary_link' => $primary_link,
+			'type' => 'friendship_created',
+			'action' => apply_filters( 'friends_activity_friendship_accepted_action', sprintf( __( '%s and %s are now friends', 'buddypress' ), $friend_link, $initiator_link ), &$friendship ),
 			'item_id' => $friendship_id,
 			'hide_sitewide' => true /* We've already got the first entry site wide */
 		) );
@@ -654,7 +440,6 @@ function friends_accept_friendship( $friendship_id ) {
 		friends_notification_accepted_request( $friendship->id, $friendship->initiator_user_id, $friendship->friend_user_id );
 
 		do_action( 'friends_friendship_accepted', $friendship->id, $friendship->initiator_user_id, $friendship->friend_user_id );
-
 		return true;
 	}
 
@@ -673,6 +458,123 @@ function friends_reject_friendship( $friendship_id ) {
 	}
 
 	return false;
+}
+
+function friends_check_friendship( $user_id, $possible_friend_id ) {
+	global $bp;
+
+	if ( 'is_friend' == BP_Friends_Friendship::check_is_friend( $user_id, $possible_friend_id ) )
+		return true;
+
+	return false;
+}
+
+function friends_check_friendship_status( $user_id, $possible_friend_id ) {
+	/* Returns - 'is_friend', 'not_friends', 'pending' */
+	return BP_Friends_Friendship::check_is_friend( $user_id, $possible_friend_id );
+}
+
+function friends_get_total_friend_count( $user_id = false ) {
+	global $bp;
+
+	if ( !$user_id )
+		$user_id = ( $bp->displayed_user->id ) ? $bp->displayed_user->id : $bp->loggedin_user->id;
+
+	if ( !$count = wp_cache_get( 'bp_total_friend_count_' . $user_id, 'bp' ) ) {
+		$count = get_usermeta( $user_id, 'total_friend_count' );
+		if ( empty( $count ) ) $count = 0;
+		wp_cache_set( 'bp_total_friend_count_' . $user_id, $count, 'bp' );
+	}
+
+	return apply_filters( 'friends_get_total_friend_count', $count );
+}
+
+function friends_check_user_has_friends( $user_id ) {
+	$friend_count = friends_get_total_friend_count( $user_id );
+
+	if ( empty( $friend_count ) )
+		return false;
+
+	if ( !(int)$friend_count )
+		return false;
+
+	return true;
+}
+
+function friends_get_friendship_id( $initiator_user_id, $friend_user_id ) {
+	return BP_Friends_Friendship::get_friendship_id( $initiator_user_id, $friend_user_id );
+}
+
+function friends_get_friend_user_ids( $user_id, $friend_requests_only = false, $assoc_arr = false, $filter = false ) {
+	return BP_Friends_Friendship::get_friend_user_ids( $user_id, $friend_requests_only, $assoc_arr, $filter );
+}
+
+function friends_search_friends( $search_terms, $user_id, $pag_num = 10, $pag_page = 1 ) {
+	return BP_Friends_Friendship::search_friends( $search_terms, $user_id, $pag_num, $pag_page );
+}
+
+function friends_get_friendship_request_user_ids( $user_id ) {
+	return BP_Friends_Friendship::get_friendship_request_user_ids( $user_id );
+}
+
+function friends_get_recently_active( $user_id, $per_page = false, $page = false, $filter = false ) {
+	return apply_filters( 'friends_get_recently_active', BP_Core_User::get_users( 'active', $per_page, $page, $user_id, $filter ) );
+}
+
+function friends_get_alphabetically( $user_id, $per_page = false, $page = false, $filter = false ) {
+	return apply_filters( 'friends_get_alphabetically', BP_Core_User::get_users( 'alphabetical', $per_page, $page, $user_id, $filter ) );
+}
+
+function friends_get_newest( $user_id, $per_page = false, $page = false, $filter = false ) {
+	return apply_filters( 'friends_get_newest', BP_Core_User::get_users( 'newest', $per_page, $page, $user_id, $filter ) );
+}
+
+function friends_get_bulk_last_active( $friend_ids ) {
+	return BP_Friends_Friendship::get_bulk_last_active( $friend_ids );
+}
+
+function friends_get_friends_invite_list( $user_id = false ) {
+	global $bp;
+
+	if ( !$user_id )
+		$user_id = $bp->loggedin_user->id;
+
+	if ( bp_has_members( 'user_id=' . $user_id . '&type=alphabetical&per_page=0' ) ) {
+		while ( bp_members() ) : bp_the_member();
+			$friends[] = array(
+				'id' => bp_get_member_user_id(),
+				'full_name' => bp_get_member_name()
+			);
+		endwhile;
+	}
+
+	if ( empty($friends) )
+		return false;
+
+	return $friends;
+}
+
+function friends_count_invitable_friends( $user_id, $group_id ) {
+	return BP_Friends_Friendship::get_invitable_friend_count( $user_id, $group_id );
+}
+
+function friends_get_friend_count_for_user( $user_id ) {
+	return BP_Friends_Friendship::total_friend_count( $user_id );
+}
+
+function friends_search_users( $search_terms, $user_id, $pag_num = false, $pag_page = false ) {
+	global $bp;
+
+	$user_ids = BP_Friends_Friendship::search_users( $search_terms, $user_id, $pag_num, $pag_page );
+
+	if ( !$user_ids )
+		return false;
+
+	for ( $i = 0; $i < count($user_ids); $i++ ) {
+		$users[] = new BP_Core_User($user_ids[$i]);
+	}
+
+	return array( 'users' => $users, 'count' => BP_Friends_Friendship::search_users_count($search_terms) );
 }
 
 function friends_is_friendship_confirmed( $friendship_id ) {
@@ -705,17 +607,35 @@ add_action( 'wpmu_delete_user', 'friends_remove_data', 1 );
 add_action( 'delete_user', 'friends_remove_data', 1 );
 add_action( 'make_spam_user', 'friends_remove_data', 1 );
 
+
+/********************************************************************************
+ * Caching
+ *
+ * Caching functions handle the clearing of cached objects and pages on specific
+ * actions throughout BuddyPress.
+ */
+
 function friends_clear_friend_object_cache( $friendship_id ) {
 	if ( !$friendship = new BP_Friends_Friendship( $friendship_id ) )
 		return false;
 
 	wp_cache_delete( 'friends_friend_ids_' . $friendship->initiator_user_id, 'bp' );
 	wp_cache_delete( 'friends_friend_ids_' . $friendship->friend_user_id, 'bp' );
+	wp_cache_delete( 'bp_total_friend_count_' . $friendship->initiator_user_id, 'bp' );
+	wp_cache_delete( 'bp_total_friend_count_' . $friendship->friend_user_id, 'bp' );
 	wp_cache_delete( 'popular_users', 'bp' );
 
 	/* Clear the sitewide activity cache */
 	wp_cache_delete( 'sitewide_activity', 'bp' );
 }
+
+function friends_clear_friend_notifications() {
+	global $bp;
+
+	if ( isset($_GET['new']) )
+		bp_core_delete_notifications_for_user_by_type( $bp->loggedin_user->id, 'friends', 'friendship_accepted' );
+}
+add_action( 'bp_activity_screen_my_activity', 'friends_clear_friend_notifications' );
 
 // List actions to clear object caches on
 add_action( 'friends_friendship_accepted', 'friends_clear_friend_object_cache' );

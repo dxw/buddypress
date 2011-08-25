@@ -103,31 +103,23 @@ class BP_Friends_Friendship {
 		return $fids;
 	}
 
-	function get_friendship_ids( $user_id, $friend_requests_only = false ) {
-		global $wpdb, $bp;
-
-		if ( $friend_requests_only ) {
-			$oc_sql = $wpdb->prepare( "AND is_confirmed = 0" );
-			$friend_sql = $wpdb->prepare ( " WHERE friend_user_id = %d", $user_id );
-		} else {
-			$oc_sql = $wpdb->prepare( "AND is_confirmed = 1" );
-			$friend_sql = $wpdb->prepare ( " WHERE (initiator_user_id = %d OR friend_user_id = %d)", $user_id, $user_id );
-		}
-
-		return $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$bp->friends->table_name} $friend_sql $oc_sql" ) );
-	}
-
 	function get_friendship_id( $user_id, $friend_id ) {
 		global $wpdb, $bp;
 
 		return $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$bp->friends->table_name} WHERE ( initiator_user_id = %d AND friend_user_id = %d ) OR ( initiator_user_id = %d AND friend_user_id = %d ) AND is_confirmed = 1", $user_id, $friend_id, $friend_id, $user_id ) );
 	}
 
-	function total_friend_count( $user_id = false) {
+	function get_friendship_request_user_ids( $user_id ) {
+		global $wpdb, $bp;
+
+		return $wpdb->get_col( $wpdb->prepare( "SELECT initiator_user_id FROM {$bp->friends->table_name} WHERE friend_user_id = %d AND is_confirmed = 0", $user_id ) );
+	}
+
+	function total_friend_count( $user_id = false ) {
 		global $wpdb, $bp;
 
 		if ( !$user_id )
-			$user_id = $bp->displayed_user->id;
+			$user_id = ( $bp->displayed_user->id ) ? $bp->displayed_user->id : $bp->loggedin_user->id;
 
 		/* This is stored in 'total_friend_count' usermeta.
 		   This function will recalculate, update and return. */
@@ -165,11 +157,11 @@ class BP_Friends_Friendship {
 
 		// filter the user_ids based on the search criteria.
 		if ( function_exists('xprofile_install') ) {
-			$sql = $wpdb->prepare( "SELECT DISTINCT user_id FROM {$bp->profile->table_name_data} WHERE user_id IN ($fids) AND value LIKE '$filter%%' {$pag_sql}" );
-			$total_sql = $wpdb->prepare( "SELECT COUNT(DISTINCT user_id) FROM {$bp->profile->table_name_data} WHERE user_id IN ($fids) AND value LIKE '$filter%%'" );
+			$sql = "SELECT DISTINCT user_id FROM {$bp->profile->table_name_data} WHERE user_id IN ($fids) AND value LIKE '$filter%%' {$pag_sql}";
+			$total_sql = "SELECT COUNT(DISTINCT user_id) FROM {$bp->profile->table_name_data} WHERE user_id IN ($fids) AND value LIKE '$filter%%'";
 		} else {
-			$sql = $wpdb->prepare( "SELECT DISTINCT user_id FROM " . CUSTOM_USER_META_TABLE . " WHERE user_id IN ($fids) AND meta_key = 'nickname' AND meta_value LIKE '$filter%%' {$pag_sql}" );
-			$total_sql = $wpdb->prepare( "SELECT COUNT(DISTINCT user_id) FROM " . CUSTOM_USER_META_TABLE . " WHERE user_id IN ($fids) AND meta_key = 'nickname' AND meta_value LIKE '$filter%%'" );
+			$sql = "SELECT DISTINCT user_id FROM " . CUSTOM_USER_META_TABLE . " WHERE user_id IN ($fids) AND meta_key = 'nickname' AND meta_value LIKE '$filter%%' {$pag_sql}";
+			$total_sql = "SELECT COUNT(DISTINCT user_id) FROM " . CUSTOM_USER_META_TABLE . " WHERE user_id IN ($fids) AND meta_key = 'nickname' AND meta_value LIKE '$filter%%'";
 		}
 
 		$filtered_friend_ids = $wpdb->get_col($sql);
@@ -222,6 +214,7 @@ class BP_Friends_Friendship {
 		global $wpdb, $bp;
 
 		$filter = like_escape( $wpdb->escape( $filter ) );
+
 		$usermeta_table = $wpdb->base_prefix . 'usermeta';
 		$users_table = $wpdb->base_prefix . 'users';
 
@@ -247,6 +240,7 @@ class BP_Friends_Friendship {
 		global $wpdb, $bp;
 
 		$filter = like_escape( $wpdb->escape( $filter ) );
+
 		$usermeta_table = $wpdb->prefix . 'usermeta';
 		$users_table = $wpdb->base_prefix . 'users';
 
@@ -326,7 +320,5 @@ class BP_Friends_Friendship {
 		$wpdb->query( $wpdb->prepare( "DELETE FROM {$bp->core->table_name_notifications} WHERE component_name = 'friends' AND ( component_action = 'friendship_request' OR component_action = 'friendship_accepted' ) AND item_id = %d", $user_id ) );
 	}
 }
-
-
 
 ?>

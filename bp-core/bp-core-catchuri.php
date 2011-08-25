@@ -32,7 +32,7 @@ function bp_core_set_uri_globals() {
 	global $bp_unfiltered_uri;
 	global $bp, $current_blog;
 
-	if ( !defined( 'BP_ENABLE_MULTIBLOG' ) ) {
+	if ( !defined( 'BP_ENABLE_MULTIBLOG' ) && bp_core_is_multisite() ) {
 		/* Only catch URI's on the root blog if we are not running BP on multiple blogs */
 		if ( BP_ROOT_BLOG != (int) $current_blog->blog_id )
 			return false;
@@ -213,9 +213,7 @@ function bp_core_do_catch_uri() {
 	if ( !$bp_no_status_set ) {
 		status_header( 200 );
 		$wp_query->is_404 = false;
-
-		if ( $bp->current_component != BP_HOME_BLOG_SLUG )
-			$wp_query->is_page = true;
+		$wp_query->is_page = true;
 	}
 
 	foreach ( (array)$templates as $template )
@@ -253,6 +251,10 @@ function bp_core_catch_no_access() {
 	if ( !$bp->displayed_user->id && $bp_unfiltered_uri[0] == BP_MEMBERS_SLUG && isset($bp_unfiltered_uri[1]) )
 		bp_core_redirect( $bp->root_domain );
 
+	// If the template file doesn't exist, redirect to the root domain.
+	if ( !bp_is_blog_page() && !file_exists( apply_filters( 'bp_located_template', locate_template( array( $bp_path . '.php' ), false ), array( $bp_path . '.php' ) ) ) )
+		bp_core_redirect( $bp->root_domain );
+
 	if ( !$bp_path && !bp_is_blog_page() ) {
 		if ( is_user_logged_in() ) {
 			wp_redirect( $bp->root_domain );
@@ -274,7 +276,7 @@ function bp_core_catch_profile_uri() {
 	global $bp;
 
 	if ( !function_exists('xprofile_install') )
-		bp_core_load_template( apply_filters( 'bp_core_template_display_profile', 'profile/index' ) );
+		bp_core_load_template( apply_filters( 'bp_core_template_display_profile', 'members/single/home' ) );
 }
 
 ?>

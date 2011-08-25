@@ -136,10 +136,10 @@ function bp_forums_bbpress_install() {
 			"define( 'BBDB_HOST',"  		=> array( "'localhost'",                   	"'" . DB_HOST . "'" ),
 			"define( 'BBDB_CHARSE"  		=> array( "'utf8'",                        	"'" . DB_CHARSET . "'" ),
 			"define( 'BBDB_COLLAT"  		=> array( "''",                            	"'" . DB_COLLATE . "'" ),
-			"define( 'BB_AUTH_KEY"  		=> array( "'put your unique phrase here'",  "'" . AUTH_KEY . "'" ),
-			"define( 'BB_SECURE_A"  		=> array( "'put your unique phrase here'",  "'" . SECURE_AUTH_KEY . "'" ),
-			"define( 'BB_LOGGED_I"  		=> array( "'put your unique phrase here'",  "'" . LOGGED_IN_KEY . "'" ),
-			"define( 'BB_NONCE_KE"  		=> array( "'put your unique phrase here'",  "'" . NONCE_KEY . "'" ),
+			"define( 'BB_AUTH_KEY"  		=> array( "'put your unique phrase here'",  "'" . addslashes( AUTH_KEY ) . "'" ),
+			"define( 'BB_SECURE_A"  		=> array( "'put your unique phrase here'",  "'" . addslashes( SECURE_AUTH_KEY ) . "'" ),
+			"define( 'BB_LOGGED_I"  		=> array( "'put your unique phrase here'",  "'" . addslashes( LOGGED_IN_KEY ) . "'" ),
+			"define( 'BB_NONCE_KE"  		=> array( "'put your unique phrase here'",  "'" . addslashes( NONCE_KEY ) . "'" ),
 			"\$bb_table_prefix = '" 		=> array( "'bb_'",                          "'" . $wpdb->base_prefix . "bb_'" ),
 			"define( 'BB_LANG', '" 			=> array( "''",                          	"'" . WPLANG . "'" )
 		)
@@ -157,10 +157,19 @@ function bp_forums_bbpress_install() {
 	$file .= "\n" .   '$bb->custom_user_meta_table = "' . $wpdb->usermeta . '";';
 	$file .= "\n\n" . '$bb->uri = "' . BP_PLUGIN_URL . '/bp-forums/bbpress/";';
 	$file .= "\n" .   '$bb->name = "' . get_blog_option( BP_ROOT_BLOG, 'name' ) . ' ' . __( 'Forums', 'buddypress' ) . '";';
-	$file .= "\n" .   '$bb->wordpress_mu_primary_blog_id = ' . BP_ROOT_BLOG . ';';
-	$file .= "\n\n" . 'define(\'BB_AUTH_SALT\', "' . AUTH_SALT . '");';
-	$file .= "\n" .   'define(\'BB_LOGGED_IN_SALT\', "' . LOGGED_IN_SALT . '");';
-	$file .= "\n" .   'define(\'BB_SECURE_AUTH_SALT\', "' . SECURE_AUTH_SALT . '");';
+
+	if ( bp_core_is_multisite() )
+		$file .= "\n" .   '$bb->wordpress_mu_primary_blog_id = ' . BP_ROOT_BLOG . ';';
+
+	if ( defined( 'AUTH_SALT' ) )
+		$file .= "\n\n" . 'define(\'BB_AUTH_SALT\', "' . addslashes( AUTH_SALT ) . '");';
+
+	if ( defined( 'LOGGED_IN_SALT' ) )
+		$file .= "\n" .   'define(\'BB_LOGGED_IN_SALT\', "' . addslashes( LOGGED_IN_SALT ) . '");';
+
+	if ( defined( 'SECURE_AUTH_SALT' ) )
+		$file .= "\n" .   'define(\'BB_SECURE_AUTH_SALT\', "' . addslashes( SECURE_AUTH_SALT ) . '");';
+
 	$file .= "\n\n" . 'define(\'WP_AUTH_COOKIE_VERSION\', 2);';
 	$file .= "\n\n" . '?>';
 
@@ -196,7 +205,7 @@ function bp_forums_bbpress_write( $file_source, $file_target, $alterations ) {
 	$modified_lines = array();
 
 	// Loop through the lines and modify them
-	foreach ( $lines as $line ) {
+	foreach ( (array)$lines as $line ) {
 		if ( isset( $alterations[substr( $line, 0, 20 )] ) ) {
 			$alteration = $alterations[substr( $line, 0, 20 )];
 			$modified_lines[] = str_replace( $alteration[0], $alteration[1], $line );
@@ -229,7 +238,7 @@ function bp_forums_bbpress_write( $file_source, $file_target, $alterations ) {
 	$file_handle = fopen( $file_target, 'w' );
 
 	// Write lines one by one to avoid OS specific newline hassles
-	foreach ( $modified_lines as $modified_line ) {
+	foreach ( (array)$modified_lines as $modified_line ) {
 		if ( false !== strpos( $modified_line, '?>' ) ) {
 			$modified_line = '?>';
 		}

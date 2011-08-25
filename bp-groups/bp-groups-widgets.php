@@ -4,7 +4,7 @@
 function groups_register_widgets() {
 	add_action('widgets_init', create_function('', 'return register_widget("BP_Groups_Widget");') );
 }
-add_action( 'plugins_loaded', 'groups_register_widgets' );
+add_action( 'bp_register_widgets', 'groups_register_widgets' );
 
 /*** GROUPS WIDGET *****************/
 
@@ -13,7 +13,7 @@ class BP_Groups_Widget extends WP_Widget {
 		parent::WP_Widget( false, $name = __( 'Groups', 'buddypress' ) );
 
 		if ( is_active_widget( false, false, $this->id_base ) )
-			wp_enqueue_script( 'groups_widget_groups_list-js', BP_PLUGIN_URL . '/bp-groups/js/widget-groups.js', array('jquery', 'jquery-livequery-pack') );
+			wp_enqueue_script( 'groups_widget_groups_list-js', BP_PLUGIN_URL . '/bp-groups/js/widget-groups.js', array('jquery') );
 	}
 
 	function widget($args, $instance) {
@@ -26,7 +26,7 @@ class BP_Groups_Widget extends WP_Widget {
 		   . $widget_name
 		   . $after_title; ?>
 
-		<?php if ( bp_has_site_groups( 'type=popular&per_page=' . $instance['max_groups'] . '&max=' . $instance['max_groups'] ) ) : ?>
+		<?php if ( bp_has_groups( 'type=popular&per_page=' . $instance['max_groups'] . '&max=' . $instance['max_groups'] ) ) : ?>
 			<div class="item-options" id="groups-list-options">
 				<span class="ajax-loader" id="ajax-loader-groups"></span>
 				<a href="<?php echo site_url() . '/' . $bp->groups->slug ?>" id="newest-groups"><?php _e("Newest", 'buddypress') ?></a> |
@@ -35,15 +35,15 @@ class BP_Groups_Widget extends WP_Widget {
 			</div>
 
 			<ul id="groups-list" class="item-list">
-				<?php while ( bp_site_groups() ) : bp_the_site_group(); ?>
+				<?php while ( bp_groups() ) : bp_the_group(); ?>
 					<li>
 						<div class="item-avatar">
-							<a href="<?php bp_the_site_group_link() ?>"><?php bp_the_site_group_avatar_thumb() ?></a>
+							<a href="<?php bp_group_permalink() ?>"><?php bp_group_avatar_thumb() ?></a>
 						</div>
 
 						<div class="item">
-							<div class="item-title"><a href="<?php bp_the_site_group_link() ?>" title="<?php bp_the_site_group_name() ?>"><?php bp_the_site_group_name() ?></a></div>
-							<div class="item-meta"><span class="activity"><?php bp_the_site_group_member_count() ?></span></div>
+							<div class="item-title"><a href="<?php bp_group_permalink() ?>" title="<?php bp_group_name() ?>"><?php bp_group_name() ?></a></div>
+							<div class="item-meta"><span class="activity"><?php bp_group_member_count() ?></span></div>
 						</div>
 					</li>
 
@@ -98,27 +98,27 @@ function groups_ajax_widget_groups_list() {
 		break;
 	}
 
-	if ( bp_has_site_groups( 'type=' . $type . '&per_page=' . $_POST['max_groups'] . '&max=' . $_POST['max_groups'] ) ) : ?>
+	if ( bp_has_groups( 'type=' . $type . '&per_page=' . $_POST['max_groups'] . '&max=' . $_POST['max_groups'] ) ) : ?>
 		<?php echo "0[[SPLIT]]"; ?>
 
 		<ul id="groups-list" class="item-list">
-			<?php while ( bp_site_groups() ) : bp_the_site_group(); ?>
+			<?php while ( bp_groups() ) : bp_the_group(); ?>
 				<li>
 					<div class="item-avatar">
-						<a href="<?php bp_the_site_group_link() ?>"><?php bp_the_site_group_avatar_thumb() ?></a>
+						<a href="<?php bp_group_permalink() ?>"><?php bp_group_avatar_thumb() ?></a>
 					</div>
 
 					<div class="item">
-						<div class="item-title"><a href="<?php bp_the_site_group_link() ?>" title="<?php bp_the_site_group_name() ?>"><?php bp_the_site_group_name() ?></a></div>
+						<div class="item-title"><a href="<?php bp_group_permalink() ?>" title="<?php bp_group_name() ?>"><?php bp_group_name() ?></a></div>
 						<div class="item-meta">
 							<span class="activity">
 								<?php
 								if ( 'newest-groups' == $_POST['filter'] ) {
-									bp_the_site_group_date_created();
+									printf( __( 'created %s ago', 'buddypress' ), bp_get_group_date_created() );
 								} else if ( 'recently-active-groups' == $_POST['filter'] ) {
-									bp_the_site_group_last_active();
+									printf( __( 'active %s ago', 'buddypress' ), bp_get_group_last_active() );
 								} else if ( 'popular-groups' == $_POST['filter'] ) {
-									bp_the_site_group_member_count();
+									bp_group_member_count();
 								}
 								?>
 							</span>

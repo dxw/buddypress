@@ -1,4 +1,409 @@
 <?php
+/***
+ * Members template loop that will allow you to loop all members or friends of a member
+ * if you pass a user_id.
+ */
+
+class BP_Core_Members_Template {
+	var $current_member = -1;
+	var $member_count;
+	var $members;
+	var $member;
+
+	var $in_the_loop;
+
+	var $pag_page;
+	var $pag_num;
+	var $pag_links;
+	var $total_member_count;
+
+	function bp_core_members_template( $type, $page_number, $per_page, $max, $user_id, $search_terms, $include, $populate_extras ) {
+		global $bp;
+
+		$this->pag_page = isset( $_REQUEST['upage'] ) ? intval( $_REQUEST['upage'] ) : $page_number;
+		$this->pag_num = isset( $_REQUEST['num'] ) ? intval( $_REQUEST['num'] ) : $per_page;
+		$this->type = $type;
+
+		if ( isset( $_REQUEST['letter'] ) && '' != $_REQUEST['letter'] ) {
+			$this->members = BP_Core_User::get_users_by_letter( $_REQUEST['letter'], $this->pag_num, $this->pag_page, $populate_extras );
+		}
+		else if ( false !== $include ) {
+			$this->members = BP_Core_User::get_specific_users( $include, $this->pag_num, $this->pag_page, $populate_extras );
+		}
+		else {
+			$this->members = bp_core_get_users( array( 'type' => $this->type, 'per_page' => $this->pag_num, 'page' => $this->pag_page, 'user_id' => $user_id, 'search_terms' => $search_terms, 'populate_extras' => $populate_extras ) );
+		}
+
+		if ( !$max || $max >= (int)$this->members['total'] )
+			$this->total_member_count = (int)$this->members['total'];
+		else
+			$this->total_member_count = (int)$max;
+
+		$this->members = $this->members['users'];
+
+		if ( $max ) {
+			if ( $max >= count($this->members) )
+				$this->member_count = count($this->members);
+			else
+				$this->member_count = (int)$max;
+		} else {
+			$this->member_count = count($this->members);
+		}
+
+		if ( (int) $this->total_member_count && (int) $this->pag_num ) {
+			$this->pag_links = paginate_links( array(
+				'base' => add_query_arg( 'upage', '%#%' ),
+				'format' => '',
+				'total' => ceil( (int) $this->total_member_count / (int) $this->pag_num ),
+				'current' => (int) $this->pag_page,
+				'prev_text' => '&larr;',
+				'next_text' => '&rarr;',
+				'mid_size' => 1
+			));
+		}
+	}
+
+	function has_members() {
+		if ( $this->member_count )
+			return true;
+
+		return false;
+	}
+
+	function next_member() {
+		$this->current_member++;
+		$this->member = $this->members[$this->current_member];
+
+		return $this->member;
+	}
+
+	function rewind_members() {
+		$this->current_member = -1;
+		if ( $this->member_count > 0 ) {
+			$this->member = $this->members[0];
+		}
+	}
+
+	function members() {
+		if ( $this->current_member + 1 < $this->member_count ) {
+			return true;
+		} elseif ( $this->current_member + 1 == $this->member_count ) {
+			do_action('loop_end');
+			// Do some cleaning up after the loop
+			$this->rewind_members();
+		}
+
+		$this->in_the_loop = false;
+		return false;
+	}
+
+	function the_member() {
+		global $member, $bp;
+
+		$this->in_the_loop = true;
+		$this->member = $this->next_member();
+
+		if ( 0 == $this->current_member ) // loop has just started
+			do_action('loop_start');
+	}
+}
+
+function bp_rewind_members() {
+	global $members_template;
+
+	return $members_template->rewind_members();
+}
+
+function bp_has_members( $args = '' ) {
+	global $bp, $members_template;
+
+	/***
+	 * Set the defaults based on the current page. Any of these will be overridden
+	 * if arguments are directly passed into the loop. Custom plugins should always
+	 * pass their parameters directly to the loop.
+	 */
+	$type = 'active';
+	$user_id = false;
+	$page = 1;
+	$search_terms = false;
+
+	/* User filtering */
+	if ( !empty( $bp->displayed_user->id ) )
+		$user_id = $bp->displayed_user->id;
+
+	/* Pass a filter if ?s= is set. */
+	if ( $_REQUEST['s'] )
+		$search_terms = $_REQUEST['s'];
+
+	// type: active ( default ) | random | newest | popular | online | alphabetical
+	$defaults = array(
+		'type' => $type,
+		'page' => $page,
+		'per_page' => 20,
+		'max' => false,
+
+		'include' => false, // Pass a user_id or comma separated list of user_ids to only show these users
+
+		'user_id' => $user_id, // Pass a user_id to only show friends of this user
+		'search_terms' => $search_terms, // Pass search_terms to filter users by their profile data
+
+		'populate_extras' => true // Fetch usermeta? Friend count, last active etc.
+	);
+
+	$r = wp_parse_args( $args, $defaults );
+	extract( $r );
+
+	if ( $max ) {
+		if ( $per_page > $max )
+			$per_page = $max;
+	}
+
+	$members_template = new BP_Core_Members_Template( $type, $page, $per_page, $max, $user_id, $search_terms, $include, (bool)$populate_extras );
+
+	return $members_template->has_members();
+}
+
+function bp_the_member() {
+	global $members_template;
+	return $members_template->the_member();
+}
+
+function bp_members() {
+	global $members_template;
+	return $members_template->members();
+}
+
+function bp_members_pagination_count() {
+	global $bp, $members_template;
+
+	$from_num = bp_core_number_format( intval( ( $members_template->pag_page - 1 ) * $members_template->pag_num ) + 1 );
+	$to_num = bp_core_number_format( ( $from_num + ( $members_template->pag_num - 1 ) > $members_template->total_member_count ) ? $members_template->total_member_count : $from_num + ( $members_template->pag_num - 1) );
+	$total = bp_core_number_format( $members_template->total_member_count );
+
+	if ( 'active' == $members_template->type )
+		echo sprintf( __( 'Viewing member %s to %s (of %s active members)', 'buddypress' ), $from_num, $to_num, $total );
+	else if ( 'popular' == $members_template->type )
+		echo sprintf( __( 'Viewing member %s to %s (of %s members with friends)', 'buddypress' ), $from_num, $to_num, $total );
+	else if ( 'online' == $members_template->type )
+		echo sprintf( __( 'Viewing member %s to %s (of %s members online)', 'buddypress' ), $from_num, $to_num, $total );
+	else
+		echo sprintf( __( 'Viewing member %s to %s (of %s members)', 'buddypress' ), $from_num, $to_num, $total );
+
+	?><span class="ajax-loader"></span><?php
+}
+
+function bp_members_pagination_links() {
+	echo bp_get_members_pagination_links();
+}
+	function bp_get_members_pagination_links() {
+		global $members_template;
+
+		return apply_filters( 'bp_get_members_pagination_links', $members_template->pag_links );
+	}
+
+function bp_member_user_id() {
+	echo bp_get_member_user_id();
+}
+	function bp_get_member_user_id() {
+		global $members_template;
+
+		return apply_filters( 'bp_get_member_user_id', $members_template->member->id );
+	}
+
+function bp_member_avatar( $args = '' ) {
+	echo apply_filters( 'bp_member_avatar', bp_get_member_avatar( $args ) );
+}
+	function bp_get_member_avatar( $args = '' ) {
+		global $bp, $members_template;
+
+		$defaults = array(
+			'type' => 'thumb',
+			'width' => false,
+			'height' => false,
+			'class' => 'avatar',
+			'id' => false,
+			'alt' => __( 'Member avatar', 'buddypress' )
+		);
+
+		$r = wp_parse_args( $args, $defaults );
+		extract( $r, EXTR_SKIP );
+
+		return apply_filters( 'bp_get_member_avatar', bp_core_fetch_avatar( array( 'item_id' => $members_template->member->id, 'type' => $type, 'alt' => $alt, 'css_id' => $id, 'class' => $class, 'width' => $width, 'height' => $height, 'email' => $members_template->member->user_email ) ) );
+	}
+
+function bp_member_permalink() {
+	echo bp_get_member_permalink();
+}
+	function bp_get_member_permalink() {
+		global $members_template;
+
+		return apply_filters( 'bp_get_member_permalink', bp_core_get_user_domain( $members_template->member->id, $members_template->member->user_nicename, $members_template->member->user_login ) );
+	}
+	function bp_member_link() { echo bp_get_member_permalink(); }
+	function bp_get_member_link() { return bp_get_member_permalink(); }
+
+function bp_member_name() {
+	echo apply_filters( 'bp_member_name', bp_get_member_name() );
+}
+	function bp_get_member_name() {
+		global $members_template;
+
+		if ( empty($members_template->member->fullname) )
+			$members_template->member->fullname = $members_template->member->display_name;
+
+		return apply_filters( 'bp_get_member_name', $members_template->member->fullname );
+	}
+	add_filter( 'bp_get_member_name', 'wp_filter_kses' );
+	add_filter( 'bp_get_member_name', 'stripslashes' );
+	add_filter( 'bp_get_member_name', 'strip_tags' );
+
+function bp_member_last_active() {
+	echo bp_get_member_last_active();
+}
+	function bp_get_member_last_active() {
+		global $members_template;
+
+		$last_activity = bp_core_get_last_activity( $members_template->member->last_activity, __( 'active %s ago', 'buddypress' ) );
+
+		return apply_filters( 'bp_member_last_active', $last_activity );
+	}
+
+function bp_member_latest_update( $args = '' ) {
+	echo bp_get_member_latest_update( $args );
+}
+	function bp_get_member_latest_update( $args = '' ) {
+		global $members_template, $bp;
+
+		$defaults = array(
+			'length' => 15
+		);
+
+		$r = wp_parse_args( $args, $defaults );
+		extract( $r, EXTR_SKIP );
+
+		if ( !$update = maybe_unserialize( $members_template->member->latest_update ) )
+			return false;
+
+		$update_content = apply_filters( 'bp_get_activity_latest_update', strip_tags( bp_create_excerpt( $update['content'], $length ) ) );
+
+		if ( !empty( $update['id'] ) )
+			$update_content .= ' &middot; <a href="' . $bp->root_domain . '/' . BP_ACTIVITY_SLUG . '/p/' . $update['id'] . '">' . __( 'View', 'buddypress' ) . '</a>';
+
+		return apply_filters( 'bp_get_member_latest_update', $update_content );
+	}
+
+function bp_member_profile_data( $args = '' ) {
+	echo bp_get_member_profile_data( $args );
+}
+	function bp_get_member_profile_data( $args = '' ) {
+		global $members_template;
+
+		if ( !function_exists( 'xprofile_install' ) )
+			return false;
+
+		$defaults = array(
+			'field' => false, // Field name
+		);
+
+		$r = wp_parse_args( $args, $defaults );
+		extract( $r, EXTR_SKIP );
+
+		// Populate the user if it hasn't been already.
+		if ( empty( $members_template->member->profile_data ) )
+			$members_template->member = new BP_Core_User( $members_template->member->id );
+
+		$data = xprofile_format_profile_field( $members_template->member->profile_data[$field]['field_type'], $members_template->member->profile_data[$field]['field_data'] );
+
+		return apply_filters( 'bp_get_member_profile_data', $data );
+	}
+
+function bp_member_registered() {
+	echo bp_get_member_registered();
+}
+	function bp_get_member_registered() {
+		global $members_template;
+
+		$registered = attribute_escape( bp_core_get_last_activity( $members_template->member->user_registered, __( 'registered %s ago', 'buddypress' ) ) );
+
+		return apply_filters( 'bp_member_last_active', $registered );
+	}
+
+function bp_member_add_friend_button() {
+	global $members_template;
+
+	if ( function_exists( 'bp_add_friend_button' ) ) {
+		if ( null === $members_template->member->is_friend )
+			$friend_status = 'not_friends';
+		else
+			$friend_status = ( 0 == $members_template->member->is_friend ) ? 'pending' : 'is_friend';
+
+		echo bp_add_friend_button( $members_template->member->id, $friend_status );
+	}
+}
+
+function bp_member_total_friend_count() {
+	global $members_template;
+
+	echo bp_get_member_total_friend_count();
+}
+	function bp_get_member_total_friend_count() {
+		global $members_template;
+
+		if ( 1 == (int) $members_template->member->total_friend_count )
+			return apply_filters( 'bp_get_member_total_friend_count', sprintf( __( '%d friend', 'buddypress' ), (int) $members_template->member->total_friend_count ) );
+		else
+			return apply_filters( 'bp_get_member_total_friend_count', sprintf( __( '%d friends', 'buddypress' ), (int) $members_template->member->total_friend_count ) );
+	}
+
+function bp_member_random_profile_data() {
+	global $members_template;
+
+	if ( function_exists( 'xprofile_get_random_profile_data' ) ) { ?>
+		<?php $random_data = xprofile_get_random_profile_data( $members_template->member->id, true ); ?>
+			<strong><?php echo wp_filter_kses( $random_data[0]->name ) ?></strong>
+			<?php echo wp_filter_kses( $random_data[0]->value ) ?>
+	<?php }
+}
+
+function bp_member_hidden_fields() {
+	if ( isset( $_REQUEST['s'] ) ) {
+		echo '<input type="hidden" id="search_terms" value="' . attribute_escape( $_REQUEST['s'] ) . '" name="search_terms" />';
+	}
+
+	if ( isset( $_REQUEST['letter'] ) ) {
+		echo '<input type="hidden" id="selected_letter" value="' . attribute_escape( $_REQUEST['letter'] ) . '" name="selected_letter" />';
+	}
+
+	if ( isset( $_REQUEST['members_search'] ) ) {
+		echo '<input type="hidden" id="search_terms" value="' . attribute_escape( $_REQUEST['members_search'] ) . '" name="search_terms" />';
+	}
+}
+
+function bp_directory_members_search_form() {
+	global $bp;
+
+	$search_value = __( 'Search anything...', 'buddypress' );
+	if ( !empty( $_GET['s'] ) )
+	 	$search_value = $_GET['s'];
+
+	?>
+	<form action="" method="get" id="search-members-form">
+		<label><input type="text" name="s" id="members_search" value="<?php echo attribute_escape( $search_value ) ?>"  onfocus="if (this.value == '<?php _e( 'Search anything...', 'buddypress' ) ?>') {this.value = '';}" onblur="if (this.value == '') {this.value = '<?php _e( 'Search anything...', 'buddypress' ) ?>';}" /></label>
+		<input type="submit" id="members_search_submit" name="members_search_submit" value="<?php _e( 'Search', 'buddypress' ) ?>" />
+	</form>
+<?php
+}
+
+function bp_total_site_member_count() {
+	echo bp_get_total_site_member_count();
+}
+	function bp_get_total_site_member_count() {
+		return apply_filters( 'bp_get_total_site_member_count', bp_core_number_format( bp_core_get_total_member_count() ) );
+	}
+
+
+/** Navigation and other misc template tags **/
+
 /**
  * bp_get_nav()
  * TEMPLATE TAG
@@ -22,7 +427,7 @@ function bp_get_loggedin_user_nav() {
 	foreach( (array) $bp->bp_nav as $nav_item ) {
 		/* If the current component matches the nav item id, then add a highlight CSS class. */
 		if ( $bp->active_components[$bp->current_component] == $nav_item['css_id'] ) {
-			$selected = ' class="current"';
+			$selected = ' class="current selected"';
 		} else {
 			$selected = '';
 		}
@@ -30,13 +435,13 @@ function bp_get_loggedin_user_nav() {
 		/* If we are viewing another person (current_userid does not equal loggedin_user->id)
 		   then check to see if the two users are friends. if they are, add a highlight CSS class
 		   to the friends nav item if it exists. */
-		if ( !bp_is_home() && $bp->displayed_user->id ) {
+		if ( !bp_is_my_profile() && $bp->displayed_user->id ) {
 			$selected = '';
 
 			if ( function_exists('friends_install') ) {
 				if ( $nav_item['css_id'] == $bp->friends->id ) {
 					if ( friends_check_friendship( $bp->loggedin_user->id, $bp->displayed_user->id ) )
-						$selected = ' class="current"';
+						$selected = ' class="current selected"';
 				}
 			}
 		}
@@ -54,8 +459,6 @@ function bp_get_loggedin_user_nav() {
 
 	echo apply_filters( 'bp_logout_nav_link', $logout_link );
 }
-	/* DEPRECATED - use bp_get_loggedin_user_nav() */
-	function bp_get_nav() { bp_get_loggedin_user_nav(); }
 
 /**
  * bp_get_displayed_user_nav()
@@ -70,12 +473,12 @@ function bp_get_loggedin_user_nav() {
 function bp_get_displayed_user_nav() {
 	global $bp;
 
-	foreach ( $bp->bp_nav as $user_nav_item ) {
-		if ( !$user_nav_item['show_for_displayed_user'] )
+	foreach ( (array)$bp->bp_nav as $user_nav_item ) {
+		if ( !$user_nav_item['show_for_displayed_user'] && !bp_is_my_profile() )
 			continue;
 
-		if ( $bp->current_component == $user_nav_item['css_id'] )
-			$selected = ' class="current"';
+		if ( $bp->current_component == $user_nav_item['slug'] )
+			$selected = ' class="current selected"';
 		else
 			$selected = '';
 
@@ -84,11 +487,9 @@ function bp_get_displayed_user_nav() {
 		else
 			$link = $bp->displayed_user->domain . $user_nav_item['link'];
 
-		echo apply_filters( 'bp_get_displayed_user_nav_' . $user_nav_item['css_id'], '<li id="li-subnav-' . $user_nav_item['css_id'] . '" ' . $selected . '><a id="user-' . $user_nav_item['css_id'] . '" href="' . $link . '">' . $user_nav_item['name'] . '</a></li>', &$user_nav_item );
+		echo apply_filters( 'bp_get_displayed_user_nav_' . $user_nav_item['css_id'], '<li id="' . $user_nav_item['css_id'] . '-personal-li" ' . $selected . '><a id="user-' . $user_nav_item['css_id'] . '" href="' . $link . '">' . $user_nav_item['name'] . '</a></li>', &$user_nav_item );
 	}
 }
-	/* DEPRECATED - use bp_get_displayed_user_nav() */
-	function bp_get_user_nav() { bp_get_displayed_user_nav(); }
 
 /**
  * bp_get_options_nav()
@@ -110,32 +511,23 @@ function bp_get_displayed_user_nav() {
 function bp_get_options_nav() {
 	global $bp;
 
-	/***
-	 * Only render this navigation when the logged in user is looking at one of their own pages, or we are using it to display nav
-	 * menus for something like a group, or event.
-	 */
-	if ( bp_is_home() || $bp->is_single_item ) {
-		if ( count( $bp->bp_options_nav[$bp->current_component] ) < 1 )
-			return false;
+	if ( count( $bp->bp_options_nav[$bp->current_component] ) < 1 )
+		return false;
 
-		/* Loop through each navigation item */
-		foreach ( $bp->bp_options_nav[$bp->current_component] as $subnav_item ) {
-			if ( !$subnav_item['user_has_access'] )
-				continue;
+	/* Loop through each navigation item */
+	foreach ( (array)$bp->bp_options_nav[$bp->current_component] as $subnav_item ) {
+		if ( !$subnav_item['user_has_access'] )
+			continue;
 
-			/* If the current action or an action variable matches the nav item id, then add a highlight CSS class. */
-			if ( $subnav_item['slug'] == $bp->current_action ) {
-				$selected = ' class="current"';
-			} else {
-				$selected = '';
-			}
-
-			/* echo out the final list item */
-			echo apply_filters( 'bp_get_options_nav_' . $subnav_item['css_id'], '<li id="li-subnav-' . $subnav_item['css_id'] . '" ' . $selected . '><a id="' . $subnav_item['css_id'] . '" href="' . $subnav_item['link'] . '">' . $subnav_item['name'] . '</a></li>', $subnav_item );
+		/* If the current action or an action variable matches the nav item id, then add a highlight CSS class. */
+		if ( $subnav_item['slug'] == $bp->current_action ) {
+			$selected = ' class="current selected"';
+		} else {
+			$selected = '';
 		}
-	} else {
-		/* If we get here we are viewing another user, so show the displayed user's nav items */
-		bp_get_displayed_user_nav();
+
+		/* echo out the final list item */
+		echo apply_filters( 'bp_get_options_nav_' . $subnav_item['css_id'], '<li id="' . $subnav_item['css_id'] . '-personal-li" ' . $selected . '><a id="' . $subnav_item['css_id'] . '" href="' . $subnav_item['link'] . '">' . $subnav_item['name'] . '</a></li>', $subnav_item );
 	}
 }
 
@@ -269,7 +661,7 @@ function bp_site_name() {
 	echo apply_filters( 'bp_site_name', get_blog_option( BP_ROOT_BLOG, 'blogname' ) );
 }
 
-function bp_is_home() {
+function bp_is_my_profile() {
 	global $bp;
 
 	if ( is_user_logged_in() && $bp->loggedin_user->id == $bp->displayed_user->id )
@@ -277,6 +669,7 @@ function bp_is_home() {
 
 	return false;
 }
+function bp_is_home() { return bp_is_my_profile(); }
 
 function bp_last_activity( $user_id = false, $echo = true ) {
 	global $bp;
@@ -291,6 +684,20 @@ function bp_last_activity( $user_id = false, $echo = true ) {
 	else
 		return apply_filters( 'bp_last_activity', $last_activity );
 }
+
+function bp_user_firstname() {
+	echo bp_get_user_firstname();
+}
+	function bp_get_user_firstname( $name = false ) {
+		global $bp;
+
+		if ( !$name )
+			$name = $bp->loggedin_user->fullname;
+
+		$fullname = (array)explode( ' ', $name );
+
+		return apply_filters( 'bp_get_user_firstname', $fullname[0], $fullname );
+	}
 
 function bp_user_link() {
 	global $bp;
@@ -418,7 +825,8 @@ function bp_word_or_name( $youtext, $nametext, $capitalize = true, $echo = true 
 		else
 			return apply_filters( 'bp_word_or_name', $youtext );
 	} else {
-		$nametext = sprintf( $nametext, $bp->displayed_user->fullname );
+		$fullname = (array)explode( ' ', $bp->displayed_user->fullname );
+		$nametext = sprintf( $nametext, $fullname[0] );
 		if ( $echo )
 			echo apply_filters( 'bp_word_or_name', $nametext );
 		else
@@ -458,12 +866,12 @@ function bp_get_plugin_sidebar() {
 }
 
 function bp_is_blog_page() {
-	global $bp, $is_member_page;
+	global $bp, $is_member_page, $wp_query;
 
-	if ( $bp->current_component == BP_HOME_BLOG_SLUG )
+	if ( $wp_query->is_home && !$bp->is_directory )
 		return true;
 
-	if ( !$is_member_page && !in_array( $bp->current_component, $bp->root_components ) )
+	if ( !$bp->displayed_user->id && !$bp->is_single_item && !$bp->is_directory && !bp_core_is_root_component( $bp->current_component ) )
 		return true;
 
 	return false;
@@ -476,30 +884,38 @@ function bp_page_title() {
 function bp_get_page_title() {
 	global $bp, $post, $wp_query, $current_blog;
 
-	if ( is_home() && bp_is_page( 'home' ) ) {
+	if ( is_front_page() || !bp_current_component() || ( is_home() && bp_is_page( 'home' ) ) ) {
 		$title = __( 'Home', 'buddypress' );
+
 	} else if ( bp_is_blog_page() ) {
 		if ( is_single() ) {
-			$title = __( 'Blog &#8212; ' . $post->post_title, 'buddypress' );
+			$title = __( 'Blog &#124; ' . $post->post_title, 'buddypress' );
 		} else if ( is_category() ) {
-			$title = __( 'Blog &#8212; Categories &#8212; ' . ucwords( $wp_query->query_vars['category_name'] ), 'buddypress' );
+			$title = __( 'Blog &#124; Categories &#124; ' . ucwords( $wp_query->query_vars['category_name'] ), 'buddypress' );
 		} else if ( is_tag() ) {
-			$title = __( 'Blog &#8212; Tags &#8212; ' . ucwords( $wp_query->query_vars['tag'] ), 'buddypress' );
+			$title = __( 'Blog &#124; Tags &#124; ' . ucwords( $wp_query->query_vars['tag'] ), 'buddypress' );
+		} else if ( is_page() ){
+			$title = $post->post_title;
 		} else
 			$title = __( 'Blog', 'buddypress' );
 
 	} else if ( !empty( $bp->displayed_user->fullname ) ) {
-	 	$title = strip_tags( $bp->displayed_user->fullname . ' &#8212; ' . ucwords( $bp->current_component ) . ' &#8212; ' . $bp->bp_options_nav[$bp->current_component][$bp->current_action]['name'] );
+ 		$title = strip_tags( $bp->displayed_user->fullname . ' &#124; ' . ucwords( $bp->current_component ) );
+
 	} else if ( $bp->is_single_item ) {
-		$title = ucwords( $bp->current_component ) . ' &#8212; ' . $bp->bp_options_title;
+		$title = ucwords( $bp->current_component ) . ' &#124; ' . $bp->bp_options_title . ' &#124; ' . $bp->bp_options_nav[$bp->current_component][$bp->current_action]['name'];
+
 	} else if ( $bp->is_directory ) {
 		if ( !$bp->current_component )
 			$title = sprintf( __( '%s Directory', 'buddypress' ), ucwords( BP_MEMBERS_SLUG ) );
 		else
 			$title = sprintf( __( '%s Directory', 'buddypress' ), ucwords( $bp->current_component ) );
-	} else {
-		global $post;
-		$title = get_the_title($post->ID);
+
+	} else if ( bp_is_register_page() ) {
+		$title = __( 'Create an Account', 'buddypress' );
+
+	} else if ( bp_is_activation_page() ) {
+		$title = __( 'Activate your Account', 'buddypress' );
 	}
 
 	if ( defined( 'BP_ENABLE_MULTIBLOG' ) ) {
@@ -508,7 +924,7 @@ function bp_get_page_title() {
 		$blog_title = get_blog_option( BP_ROOT_BLOG, 'blogname' );
 	}
 
-	return apply_filters( 'bp_page_title', $blog_title . ' &#8212; ' . attribute_escape( $title ), attribute_escape( $title ) );
+	return apply_filters( 'bp_page_title', $blog_title . ' &#124; ' . esc_attr( $title ), esc_attr( $title ) );
 }
 
 function bp_styles() {
@@ -516,74 +932,52 @@ function bp_styles() {
 	wp_print_styles();
 }
 
-function bp_is_page($page) {
-	global $bp;
-
-	if ( $bp->displayed_user->id || $bp->is_single_item )
-		return false;
-
-	if ( $page == $bp->current_component || ( is_home() && $page == 'home' && $bp->current_component == $bp->default_component ) || ( $page == BP_MEMBERS_SLUG && !$bp->current_component ) )
-		return true;
-
-	return false;
-}
-
 function bp_has_custom_signup_page() {
-	if ( file_exists( WP_CONTENT_DIR . '/themes/' . get_blog_option( BP_ROOT_BLOG, 'template') . '/register.php') )
-		return true;
-
-	if ( file_exists( WP_CONTENT_DIR . '/themes/' . get_blog_option( BP_ROOT_BLOG, 'template') . '/registration/register.php') )
+	if ( locate_template( array( 'register.php' ), false ) || locate_template( array( '/registration/register.php' ), false ) )
 		return true;
 
 	return false;
 }
 
-function bp_signup_page( $deprecated = true ) {
-	if ( !$deprecated )
-		return bp_get_signup_page();
-	else
-		echo bp_get_signup_page();
+function bp_signup_page() {
+	echo bp_get_signup_page();
 }
 	function bp_get_signup_page() {
 		global $bp;
 
-		if ( bp_has_custom_signup_page() ) {
-				return apply_filters( 'bp_get_signup_page', $bp->root_domain . '/' . BP_REGISTER_SLUG );
-		} else {
-				return apply_filters( 'bp_get_signup_page', $bp->root_domain . '/wp-signup.php' );
-		}
+		if ( bp_has_custom_signup_page() )
+			$page = $bp->root_domain . '/' . BP_REGISTER_SLUG;
+		else
+			$page = $bp->root_domain . '/wp-signup.php';
+
+		return apply_filters( 'bp_get_signup_page', $page );
 	}
 
 function bp_has_custom_activation_page() {
-	if ( file_exists( WP_CONTENT_DIR . '/themes/' . get_blog_option( BP_ROOT_BLOG, 'template') . '/activate.php') )
-		return true;
-
-	if ( file_exists( WP_CONTENT_DIR . '/themes/' . get_blog_option( BP_ROOT_BLOG, 'template') . '/registration/activate.php') )
+	if ( locate_template( array( 'activate.php' ), false ) || locate_template( array( '/registration/activate.php' ), false ) )
 		return true;
 
 	return false;
 }
 
-function bp_activation_page( $echo = true ) {
-	global $bp;
-
-	if ( bp_has_custom_activation_page() ) {
-		if ( $echo )
-			echo $bp->root_domain . '/' . BP_ACTIVATION_SLUG;
-		else
-			return $bp->root_domain . '/' . BP_ACTIVATION_SLUG;
-	} else {
-		if ( $echo )
-			echo $bp->root_domain . '/wp-activate.php';
-		else
-			return $bp->root_domain . '/wp-activate.php';
-	}
+function bp_activation_page() {
+	echo bp_get_activation_page();
 }
+	function bp_get_activation_page() {
+		global $bp;
+
+		if ( bp_has_custom_activation_page() )
+			$page = $bp->root_domain . '/' . BP_ACTIVATION_SLUG;
+		else
+			$page = $bp->root_domain . '/wp-activate.php';
+
+		return apply_filters( 'bp_get_activation_page', $page );
+	}
 
 function bp_search_form_action() {
 	global $bp;
 
-	return apply_filters( 'bp_search_form_action', $bp->root_domain . '/search' );
+	return apply_filters( 'bp_search_form_action', $bp->root_domain . '/' . BP_SEARCH_SLUG );
 }
 
 function bp_search_form_type_select() {
@@ -598,11 +992,11 @@ function bp_search_form_type_select() {
 		$selection_box .= '<option value="groups">' . __( 'Groups', 'buddypress' ) . '</option>';
 	}
 
-	if ( function_exists( 'bp_forums_setup' ) && !(int) get_site_option( 'bp-disable-forum-directory' ) ) {
+	if ( function_exists( 'bp_forums_setup' ) && !(int) $bp->site_options['bp-disable-forum-directory'] ) {
 		$selection_box .= '<option value="forums">' . __( 'Forums', 'buddypress' ) . '</option>';
 	}
 
-	if ( function_exists( 'bp_blogs_install' ) ) {
+	if ( function_exists( 'bp_blogs_install' ) && bp_core_is_multisite() ) {
 		$selection_box .= '<option value="blogs">' . __( 'Blogs', 'buddypress' ) . '</option>';
 	}
 
@@ -635,41 +1029,6 @@ function bp_log_out_link() {
 	echo apply_filters( 'bp_logout_link', $logout_link );
 }
 
-function bp_profile_wire_can_post() {
-	global $bp;
-
-	if ( bp_is_home() )
-		return true;
-
-	if ( function_exists('friends_install') ) {
-		if ( friends_check_friendship( $bp->loggedin_user->id, $bp->displayed_user->id ) )
-			return true;
-		else
-			return false;
-	}
-
-	return true;
-}
-
-function bp_nav_items() {
-	global $bp;
-	// This is deprecated, you should put these navigation items in your template header.php for easy editing.
-?>
-	<li<?php if ( bp_is_page( 'home' ) ) {?> class="selected"<?php } ?>><a href="<?php echo get_option('home') ?>" title="<?php _e( 'Home', 'buddypress' ) ?>"><?php _e( 'Home', 'buddypress' ) ?></a></li>
-	<li<?php if ( bp_is_page( BP_HOME_BLOG_SLUG ) ) {?> class="selected"<?php } ?>><a href="<?php echo get_option('home') ?>/<?php echo BP_HOME_BLOG_SLUG ?>" title="<?php _e( 'Blog', 'buddypress' ) ?>"><?php _e( 'Blog', 'buddypress' ) ?></a></li>
-	<li<?php if ( bp_is_page( BP_MEMBERS_SLUG ) ) {?> class="selected"<?php } ?>><a href="<?php echo get_option('home') ?>/<?php echo BP_MEMBERS_SLUG ?>" title="<?php _e( 'Members', 'buddypress' ) ?>"><?php _e( 'Members', 'buddypress' ) ?></a></li>
-
-	<?php if ( function_exists( 'groups_install' ) ) { ?>
-		<li<?php if ( bp_is_page( $bp->groups->slug ) ) {?> class="selected"<?php } ?>><a href="<?php echo get_option('home') ?>/<?php echo $bp->groups->slug ?>" title="<?php _e( 'Groups', 'buddypress' ) ?>"><?php _e( 'Groups', 'buddypress' ) ?></a></li>
-	<?php } ?>
-
-	<?php if ( function_exists( 'bp_blogs_install' ) ) { ?>
-		<li<?php if ( bp_is_page( $bp->blogs->slug ) ) {?> class="selected"<?php } ?>><a href="<?php echo get_option('home') ?>/<?php echo $bp->blogs->slug ?>" title="<?php _e( 'Blogs', 'buddypress' ) ?>"><?php _e( 'Blogs', 'buddypress' ) ?></a></li>
-	<?php } ?>
-<?php
-	do_action( 'bp_nav_items' );
-}
-
 function bp_custom_profile_boxes() {
 	do_action( 'bp_custom_profile_boxes' );
 }
@@ -700,7 +1059,13 @@ function bp_create_excerpt( $text, $excerpt_length = 55, $filter_shortcodes = tr
 	if ( $filter_shortcodes )
 		$text = preg_replace( '|\[(.+?)\](.+?\[/\\1\])?|s', '', $text );
 
-	$words = explode(' ', $text, $excerpt_length + 1);
+	$words = preg_split(
+		"%\s*((?:<[^>]+>)+\S*)\s*|\s+%s",
+		$text,
+		$excerpt_length + 1,
+		PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE
+	);
+
 	if (count($words) > $excerpt_length) {
 		array_pop($words);
 		array_push($words, '[...]');
@@ -709,10 +1074,6 @@ function bp_create_excerpt( $text, $excerpt_length = 55, $filter_shortcodes = tr
 
 	return apply_filters( 'bp_create_excerpt', $text );
 }
-add_filter( 'bp_create_excerpt', 'wptexturize' );
-add_filter( 'bp_create_excerpt', 'convert_smilies' );
-add_filter( 'bp_create_excerpt', 'convert_chars' );
-add_filter( 'bp_create_excerpt', 'wpautop' );
 add_filter( 'bp_create_excerpt', 'wp_trim_excerpt' );
 add_filter( 'bp_create_excerpt', 'stripslashes_deep' );
 add_filter( 'bp_create_excerpt', 'force_balance_tags' );
@@ -728,16 +1089,22 @@ add_filter( 'bp_create_excerpt', 'force_balance_tags' );
  * @return bool true if the data is serialized
  */
 function bp_is_serialized( $data ) {
-   if ( '' == trim($data) ) {
-      return false;
-   }
+	if ( '' == trim($data) )
+		return false;
 
-   if ( preg_match( "/^(i|s|a|o|d)(.*);/si", $data ) ) {
-      return true;
-   }
+	if ( preg_match( "/^(i|s|a|o|d)(.*);/si", $data ) )
+		return true;
 
-   return false;
+	return false;
 }
+
+function bp_total_member_count() {
+	echo bp_get_total_member_count();
+}
+	function bp_get_total_member_count() {
+		return apply_filters( 'bp_get_total_member_count', bp_core_get_total_member_count() );
+	}
+	add_filter( 'bp_get_total_member_count', 'bp_core_number_format' );
 
 /*** Signup form template tags **********************/
 
@@ -816,21 +1183,26 @@ function bp_signup_avatar( $args = '' ) {
 		$r = wp_parse_args( $args, $defaults );
 		extract( $r, EXTR_SKIP );
 
-		$signup_avatar_dir = ( !empty( $_POST['signup_avatar_dir'] ) ) ? $_POST['signup_avatar_dir'] : $bp->signup->avatar_dir;
-
-		if ( empty( $signup_avatar_dir ) ) {
-			if ( empty( $bp->grav_default->user ) ) {
-				$default_grav = 'wavatar';
-			} else if ( 'mystery' == $bp->grav_default->user ) {
-				$default_grav = BP_PLUGIN_URL . '/bp-core/images/mystery-man.jpg';
-			} else {
-				$default_grav = $bp->grav_default->user;
-			}
-
-			$gravatar_url = apply_filters( 'bp_gravatar_url', 'http://www.gravatar.com/avatar/' );
-			return apply_filters( 'bp_get_signup_avatar', '<img src="' . $gravatar_url . md5( $_POST['signup_email'] ) . '?d=' . $default_grav . '&amp;s=' . $size ) . '" width="' . $size . '" height="' . $size . '" alt="' . $alt . '" class="' . $class . '" />';
+		if ( !bp_core_is_multisite() && !empty( $_POST['signup_username'] ) ) {
+			$user_id = bp_core_get_userid( $_POST['signup_username'] );
+			return apply_filters( 'bp_get_signup_avatar', bp_core_fetch_avatar( array( 'item_id' => $user_id, 'type' => 'full', 'width' => $size, 'height' => $size, 'alt' => $alt, 'class' => $class ) ) );
 		} else {
-			return apply_filters( 'bp_get_signup_avatar', bp_core_fetch_avatar( array( 'item_id' => $signup_avatar_dir, 'object' => 'signup', 'avatar_dir' => 'avatars/signups', 'type' => 'full', 'width' => $size, 'height' => $size, 'alt' => $alt, 'class' => $class ) ) );
+			$signup_avatar_dir = ( !empty( $_POST['signup_avatar_dir'] ) ) ? $_POST['signup_avatar_dir'] : $bp->signup->avatar_dir;
+
+			if ( empty( $signup_avatar_dir ) ) {
+				if ( empty( $bp->grav_default->user ) ) {
+					$default_grav = 'wavatar';
+				} else if ( 'mystery' == $bp->grav_default->user ) {
+					$default_grav = BP_PLUGIN_URL . '/bp-core/images/mystery-man.jpg';
+				} else {
+					$default_grav = $bp->grav_default->user;
+				}
+
+				$gravatar_url = apply_filters( 'bp_gravatar_url', 'http://www.gravatar.com/avatar/' );
+				return apply_filters( 'bp_get_signup_avatar', '<img src="' . $gravatar_url . md5( $_POST['signup_email'] ) . '?d=' . $default_grav . '&amp;s=' . $size ) . '" width="' . $size . '" height="' . $size . '" alt="' . $alt . '" class="' . $class . '" />';
+			} else {
+				return apply_filters( 'bp_get_signup_avatar', bp_core_fetch_avatar( array( 'item_id' => $signup_avatar_dir, 'object' => 'signup', 'avatar_dir' => 'avatars/signups', 'type' => 'full', 'width' => $size, 'height' => $size, 'alt' => $alt, 'class' => $class ) ) );
+			}
 		}
 	}
 
@@ -838,7 +1210,32 @@ function bp_signup_allowed() {
 	echo bp_get_signup_allowed();
 }
 	function bp_get_signup_allowed() {
-		return get_site_option( 'registration' );
+		global $bp;
+
+		if ( bp_core_is_multisite() ) {
+			if ( in_array( $bp->site_options['registration'], array( 'all', 'user' ) ) )
+				return true;
+		} else {
+			if ( (int)get_option( 'users_can_register') )
+				return true;
+		}
+		return false;
+	}
+
+function bp_blog_signup_allowed() {
+	echo bp_get_blog_signup_allowed();
+}
+	function bp_get_blog_signup_allowed() {
+		global $bp;
+
+		if ( !bp_core_is_multisite() )
+			return false;
+
+		$status = $bp->site_options['registration'];
+		if ( 'none' != $status && 'user' != $status )
+			return true;
+
+		return false;
 	}
 
 function bp_account_was_activated() {
@@ -847,335 +1244,45 @@ function bp_account_was_activated() {
 	return $bp->activation_complete;
 }
 
+function bp_registration_needs_activation() {
+	return apply_filters( 'bp_registration_needs_activation', bp_core_is_multisite() );
+}
+
+function bp_mentioned_user_display_name( $user_id_or_username ) {
+	echo bp_get_mentioned_user_display_name( $user_id_or_username );
+}
+	function bp_get_mentioned_user_display_name( $user_id_or_username ) {
+		if ( !$name = bp_core_get_user_displayname( $user_id_or_username ) )
+			$name = __( 'a user' );
+
+		return apply_filters( 'bp_get_mentioned_user_display_name', $name, $user_id_or_username );
+	}
+
+function bp_get_option( $option_name ) {
+	global $bp;
+
+	return apply_filters( 'bp_get_option', $bp->site_options[$option_name] );
+}
+
+/**
+ * Allow templates to pass parameters directly into the template loops via AJAX
+ *
+ * For the most part this will be filtered in a theme's functions.php for example
+ * in the default theme it is filtered via bp_dtheme_ajax_querystring()
+ *
+ * By using this template tag in the templates it will stop them from showing errors
+ * if someone copies the templates from the default theme into another WordPress theme
+ * without coping the functions from functions.php.
+ */
+function bp_ajax_querystring( $object = false ) {
+	global $bp;
+
+	$bp->ajax_querystring = apply_filters( 'bp_ajax_querystring', $query_string, $object );
+	return $bp->ajax_querystring;
+}
+
 
 /*** CUSTOM LOOP TEMPLATE CLASSES *******************/
-
-class BP_Core_Members_Template {
-	var $current_member = -1;
-	var $member_count;
-	var $members;
-	var $member;
-
-	var $in_the_loop;
-
-	var $pag_page;
-	var $pag_num;
-	var $pag_links;
-	var $total_member_count;
-
-	function bp_core_members_template( $type, $per_page, $max ) {
-		global $bp, $bp_the_member_query;
-
-		$this->pag_page = isset( $_REQUEST['upage'] ) ? intval( $_REQUEST['upage'] ) : 1;
-		$this->pag_num = isset( $_REQUEST['num'] ) ? intval( $_REQUEST['num'] ) : $per_page;
-
-		if ( isset( $_REQUEST['s'] ) && '' != $_REQUEST['s'] && $type != 'random' ) {
-			$this->members = BP_Core_User::search_users( $_REQUEST['s'], $this->pag_num, $this->pag_page );
-		} else if ( isset( $_REQUEST['letter'] ) && '' != $_REQUEST['letter'] ) {
-			$this->members = BP_Core_User::get_users_by_letter( $_REQUEST['letter'], $this->pag_num, $this->pag_page );
-		} else {
-			switch ( $type ) {
-				case 'random':
-					$this->members = BP_Core_User::get_random_users( $this->pag_num, $this->pag_page );
-					break;
-
-				case 'newest':
-					$this->members = BP_Core_User::get_newest_users( $this->pag_num, $this->pag_page );
-					break;
-
-				case 'popular':
-					$this->members = BP_Core_User::get_popular_users( $this->pag_num, $this->pag_page );
-					break;
-
-				case 'online':
-					$this->members = BP_Core_User::get_online_users( $this->pag_num, $this->pag_page );
-					break;
-
-				case 'alphabetical':
-					$this->members = BP_Core_User::get_alphabetical_users( $this->pag_num, $this->pag_page );
-					break;
-
-				case 'active': default:
-					$this->members = BP_Core_User::get_active_users( $this->pag_num, $this->pag_page );
-					break;
-			}
-		}
-
-		if ( !$max || $max >= (int)$this->members['total'] )
-			$this->total_member_count = (int)$this->members['total'];
-		else
-			$this->total_member_count = (int)$max;
-
-		$this->members = $this->members['users'];
-
-		if ( $max ) {
-			if ( $max >= count($this->members) )
-				$this->member_count = count($this->members);
-			else
-				$this->member_count = (int)$max;
-		} else {
-			$this->member_count = count($this->members);
-		}
-
-		if ( (int) $this->total_member_count && (int) $this->pag_num ) {
-			$this->pag_links = paginate_links( array(
-				'base' => add_query_arg( 'upage', '%#%' ),
-				'format' => '',
-				'total' => ceil( (int) $this->total_member_count / (int) $this->pag_num ),
-				'current' => (int) $this->pag_page,
-				'prev_text' => '&laquo;',
-				'next_text' => '&raquo;',
-				'mid_size' => 1
-			));
-		}
-	}
-
-	function has_members() {
-		if ( $this->member_count )
-			return true;
-
-		return false;
-	}
-
-	function next_member() {
-		$this->current_member++;
-		$this->member = $this->members[$this->current_member];
-
-		return $this->member;
-	}
-
-	function rewind_members() {
-		$this->current_member = -1;
-		if ( $this->member_count > 0 ) {
-			$this->member = $this->members[0];
-		}
-	}
-
-	function site_members() {
-		if ( $this->current_member + 1 < $this->member_count ) {
-			return true;
-		} elseif ( $this->current_member + 1 == $this->member_count ) {
-			do_action('loop_end');
-			// Do some cleaning up after the loop
-			$this->rewind_members();
-		}
-
-		$this->in_the_loop = false;
-		return false;
-	}
-
-	function the_member() {
-		global $member, $bp;
-
-		$this->in_the_loop = true;
-		$this->member = $this->next_member();
-		$user_id = $this->member->user_id;
-		$user_registered = $this->member->user_registered;
-
-		if ( !$this->member = wp_cache_get( 'bp_user_' . $user_id, 'bp' ) ) {
-			$this->member = new BP_Core_User( $user_id );
-			wp_cache_set( 'bp_user_' . $user_id, $this->member, 'bp' );
-		}
-
-		if ( $user_registered )
-			$this->member->user_registered = $user_registered;
-
-		if ( 0 == $this->current_member ) // loop has just started
-			do_action('loop_start');
-	}
-}
-
-function bp_rewind_site_members() {
-	global $site_members_template;
-
-	return $site_members_template->rewind_members();
-}
-
-function bp_has_site_members( $args = '' ) {
-	global $bp, $site_members_template;
-
-	$defaults = array(
-		'type' => 'active',
-		'per_page' => 10,
-		'max' => false
-	);
-
-	$r = wp_parse_args( $args, $defaults );
-	extract( $r, EXTR_SKIP );
-
-	// type: active ( default ) | random | newest | popular | online | alphabetical
-
-	if ( $max ) {
-		if ( $per_page > $max )
-			$per_page = $max;
-	}
-
-	$site_members_template = new BP_Core_Members_Template( $type, $per_page, $max );
-
-	return $site_members_template->has_members();
-}
-
-function bp_the_site_member() {
-	global $site_members_template;
-	return $site_members_template->the_member();
-}
-
-function bp_site_members() {
-	global $site_members_template;
-	return $site_members_template->site_members();
-}
-
-function bp_site_members_pagination_count() {
-	global $bp, $site_members_template;
-
-	$from_num = intval( ( $site_members_template->pag_page - 1 ) * $site_members_template->pag_num ) + 1;
-	$to_num = ( $from_num + ( $site_members_template->pag_num - 1 ) > $site_members_template->total_member_count ) ? $site_members_template->total_member_count : $from_num + ( $site_members_template->pag_num - 1) ;
-
-	echo sprintf( __( 'Viewing member %d to %d (of %d members)', 'buddypress' ), $from_num, $to_num, $site_members_template->total_member_count ); ?> &nbsp;
-	<span class="ajax-loader"></span><?php
-}
-
-function bp_site_members_pagination_links() {
-	echo bp_get_site_members_pagination_links();
-}
-	function bp_get_site_members_pagination_links() {
-		global $site_members_template;
-
-		return apply_filters( 'bp_get_site_members_pagination_links', $site_members_template->pag_links );
-	}
-
-function bp_the_site_member_user_id() {
-	echo bp_get_the_site_member_user_id();
-}
-	function bp_get_the_site_member_user_id() {
-		global $site_members_template;
-
-		return apply_filters( 'bp_get_the_site_member_user_id', $site_members_template->member->id );
-	}
-
-function bp_the_site_member_avatar() {
-	echo apply_filters( 'bp_the_site_member_avatar', bp_get_the_site_member_avatar() );
-}
-	function bp_get_the_site_member_avatar() {
-		global $site_members_template;
-
-		return apply_filters( 'bp_get_the_site_member_avatar', $site_members_template->member->avatar_thumb );
-	}
-
-function bp_the_site_member_link() {
-	echo bp_get_the_site_member_link();
-}
-	function bp_get_the_site_member_link() {
-		global $site_members_template;
-
-		echo apply_filters( 'bp_get_the_site_member_link', $site_members_template->member->user_url );
-	}
-
-function bp_the_site_member_name() {
-	echo apply_filters( 'bp_the_site_member_name', bp_get_the_site_member_name() );
-}
-	function bp_get_the_site_member_name() {
-		global $site_members_template;
-
-		return apply_filters( 'bp_get_the_site_member_name', $site_members_template->member->fullname );
-	}
-	add_filter( 'bp_get_the_site_member_name', 'wp_filter_kses' );
-	add_filter( 'bp_get_the_site_member_name', 'stripslashes' );
-
-function bp_the_site_member_last_active() {
-	echo bp_get_the_site_member_last_active();
-}
-	function bp_get_the_site_member_last_active() {
-		global $site_members_template;
-
-		return apply_filters( 'bp_the_site_member_last_active', $site_members_template->member->last_active );
-	}
-
-function bp_the_site_member_registered() {
-	echo bp_get_the_site_member_registered();
-}
-	function bp_get_the_site_member_registered() {
-		global $site_members_template;
-
-		return apply_filters( 'bp_the_site_member_last_active', strtotime( $site_members_template->member->user_registered ) );
-	}
-
-function bp_the_site_member_add_friend_button() {
-	global $site_members_template;
-
-	if ( function_exists( 'bp_add_friend_button' ) ) {
-		echo bp_add_friend_button( $site_members_template->member->id );
-	}
-}
-
-function bp_the_site_member_total_friend_count() {
-	global $site_members_template;
-
-	if ( !(int) $site_members_template->member->total_friends )
-		return false;
-
-	echo bp_get_the_site_member_total_friend_count();
-}
-	function bp_get_the_site_member_total_friend_count() {
-		global $site_members_template;
-
-		if ( !(int) $site_members_template->member->total_friends )
-			return false;
-
-		if ( 1 == (int) $site_members_template->member->total_friends )
-			return apply_filters( 'bp_get_the_site_member_total_friend_count', sprintf( __( '%d friend', 'buddypress' ), (int) $site_members_template->member->total_friends ) );
-		else
-			return apply_filters( 'bp_get_the_site_member_total_friend_count', sprintf( __( '%d friends', 'buddypress' ), (int) $site_members_template->member->total_friends ) );
-	}
-
-function bp_the_site_member_random_profile_data() {
-	global $site_members_template;
-
-	if ( function_exists( 'xprofile_get_random_profile_data' ) ) { ?>
-		<?php $random_data = xprofile_get_random_profile_data( $site_members_template->member->id, true ); ?>
-			<strong><?php echo wp_filter_kses( $random_data[0]->name ) ?></strong>
-			<?php echo wp_filter_kses( $random_data[0]->value ) ?>
-	<?php }
-}
-
-function bp_the_site_member_hidden_fields() {
-	if ( isset( $_REQUEST['s'] ) ) {
-		echo '<input type="hidden" id="search_terms" value="' . attribute_escape( $_REQUEST['s'] ) . '" name="search_terms" />';
-	}
-
-	if ( isset( $_REQUEST['letter'] ) ) {
-		echo '<input type="hidden" id="selected_letter" value="' . attribute_escape( $_REQUEST['letter'] ) . '" name="selected_letter" />';
-	}
-
-	if ( isset( $_REQUEST['members_search'] ) ) {
-		echo '<input type="hidden" id="search_terms" value="' . attribute_escape( $_REQUEST['members_search'] ) . '" name="search_terms" />';
-	}
-}
-
-function bp_directory_members_search_form() {
-	global $bp; ?>
-	<form action="" method="get" id="search-members-form">
-		<label><input type="text" name="s" id="members_search" value="<?php if ( isset( $_GET['s'] ) ) { echo attribute_escape( $_GET['s'] ); } else { _e( 'Search anything...', 'buddypress' ); } ?>"  onfocus="if (this.value == '<?php _e( 'Search anything...', 'buddypress' ) ?>') {this.value = '';}" onblur="if (this.value == '') {this.value = '<?php _e( 'Search anything...', 'buddypress' ) ?>';}" /></label>
-		<input type="submit" id="members_search_submit" name="members_search_submit" value="<?php _e( 'Search', 'buddypress' ) ?>" />
-		<?php wp_nonce_field( 'directory_members', '_wpnonce-member-filter' ) ?>
-	</form>
-<?php
-}
-
-function bp_home_blog_url() {
-	global $bp, $current_blog;
-
-	if ( defined( 'BP_ENABLE_MULTIBLOG' ) ) {
-		$blog_id = $current_blog->blog_id;
-	} else {
-		$blog_id = BP_ROOT_BLOG;
-	}
-
-	if ( 'bphome' == get_blog_option( $blog_id, 'template' ) )
-		echo $bp->root_domain . '/' . BP_HOME_BLOG_SLUG;
-	else
-		echo $bp->root_domain;
-}
 
 
 /* Template functions for fetching globals, without querying the DB again
@@ -1202,13 +1309,16 @@ function bp_loggedin_user_domain() {
 	return apply_filters( 'bp_loggedin_user_domain', $bp->loggedin_user->domain );
 }
 
-function bp_user_fullname() {
-	global $bp;
-	echo apply_filters( 'bp_user_fullname', $bp->displayed_user->fullname );
+function bp_displayed_user_fullname() {
+	echo bp_get_displayed_user_fullname();
 }
-	function bp_displayed_user_fullname() {
-		return bp_user_fullname();
+	function bp_get_displayed_user_fullname() {
+		global $bp;
+
+		return apply_filters( 'bp_displayed_user_fullname', $bp->displayed_user->fullname );
 	}
+	function bp_user_fullname() { echo bp_get_displayed_user_fullname(); }
+
 
 function bp_loggedin_user_fullname() {
 	echo bp_get_loggedin_user_fullname();
@@ -1216,6 +1326,22 @@ function bp_loggedin_user_fullname() {
 	function bp_get_loggedin_user_fullname() {
 		global $bp;
 		return apply_filters( 'bp_get_loggedin_user_fullname', $bp->loggedin_user->fullname );
+	}
+
+function bp_displayed_user_username() {
+	echo bp_get_displayed_user_username();
+}
+	function bp_get_displayed_user_username() {
+		global $bp;
+		return apply_filters( 'bp_get_displayed_user_username', bp_core_get_username( $bp->displayed_user->id, $bp->displayed_user->userdata->user_nicename, $bp->displayed_user->userdata->user_login ) );
+	}
+
+function bp_loggedin_user_username() {
+	echo bp_get_loggedin_user_username();
+}
+	function bp_get_loggedin_user_username() {
+		global $bp;
+		return apply_filters( 'bp_get_loggedin_user_username', bp_core_get_username( $bp->loggedin_user->id, $bp->loggedin_user->userdata->user_nicename, $bp->loggedin_user->userdata->user_login ) );
 	}
 
 function bp_current_component() {
@@ -1249,6 +1375,40 @@ function bp_root_domain() {
 
 /* Template is_() functions to determine the current page */
 
+function bp_is_front_page() {
+	if ( 'posts' == get_option('show_on_front') && is_home() )
+		return true;
+	else if ( bp_is_activity_front_page() )
+		return true;
+	else
+		return is_front_page();
+}
+
+function bp_is_activity_front_page() {
+	return ( 'page' == get_option('show_on_front') && 'activity' == get_option('page_on_front') && $_SERVER['REQUEST_URI'] == bp_core_get_site_path() );
+}
+
+function bp_is_page($page) {
+	global $bp;
+
+	if ( !$bp->displayed_user->id && $bp->current_component == $page )
+		return true;
+
+	if ( 'home' == $page )
+		return bp_is_front_page();
+
+	return false;
+}
+
+function bp_is_active( $component ) {
+	global $bp_deactivated;
+
+	if ( !isset( $bp_deactivated[ 'bp-' . $component . '.php' ] ) )
+		return true;
+
+	return false;
+}
+
 function bp_is_profile_component() {
 	global $bp;
 
@@ -1271,15 +1431,6 @@ function bp_is_blogs_component() {
 	global $bp;
 
 	if ( BP_BLOGS_SLUG == $bp->current_component )
-		return true;
-
-	return false;
-}
-
-function bp_is_wire_component() {
-	global $bp;
-
-	if ( BP_WIRE_SLUG == $bp->current_action || in_array( BP_WIRE_SLUG, (array)$bp->action_variables ) )
 		return true;
 
 	return false;
@@ -1321,10 +1472,19 @@ function bp_is_settings_component() {
 	return false;
 }
 
+function bp_is_member() {
+	global $bp;
+
+	if ( $bp->displayed_user->id )
+		return true;
+
+	return false;
+}
+
 function bp_is_user_activity() {
 	global $bp;
 
-	if ( BP_ACTIVITY_SLUG == $bp->current_component && ( !$bp->current_action || 'my-activity' == $bp->current_action ) )
+	if ( BP_ACTIVITY_SLUG == $bp->current_component )
 		return true;
 
 	return false;
@@ -1339,10 +1499,19 @@ function bp_is_user_friends_activity() {
 	return false;
 }
 
+function bp_is_activity_permalink() {
+	global $bp;
+
+	if ( BP_ACTIVITY_SLUG == $bp->current_component && is_numeric( $bp->current_action ) )
+		return true;
+
+	return false;
+}
+
 function bp_is_user_profile() {
 	global $bp;
 
-	if ( BP_XPROFILE_SLUG == $bp->current_component )
+	if ( BP_XPROFILE_SLUG == $bp->current_component || $bp->core->profile->slug == $bp->current_component )
 		return true;
 
 	return false;
@@ -1366,19 +1535,19 @@ function bp_is_change_avatar() {
 	return false;
 }
 
-function bp_is_profile_wire() {
+function bp_is_user_groups() {
 	global $bp;
 
-	if ( BP_XPROFILE_SLUG == $bp->current_component && 'wire' == $bp->current_action )
+	if ( BP_GROUPS_SLUG == $bp->current_component )
 		return true;
 
 	return false;
 }
 
-function bp_is_user_groups() {
+function bp_is_group() {
 	global $bp;
 
-	if ( BP_GROUPS_SLUG == $bp->current_component && ( !$bp->current_action || 'my-groups' == $bp->current_action ) )
+	if ( BP_GROUPS_SLUG == $bp->current_component && $bp->groups->current_group )
 		return true;
 
 	return false;
@@ -1412,15 +1581,6 @@ function bp_is_group_admin_page() {
 	return false;
 }
 
-function bp_is_group_wire() {
-	global $bp;
-
-	if ( BP_GROUPS_SLUG == $bp->current_component && $bp->is_single_item && 'wire' == $bp->current_action )
-		return true;
-
-	return false;
-}
-
 function bp_is_group_forum() {
 	global $bp;
 
@@ -1439,6 +1599,15 @@ function bp_is_group_forum_topic() {
 	return false;
 }
 
+function bp_is_group_forum_topic_edit() {
+	global $bp;
+
+	if ( BP_GROUPS_SLUG == $bp->current_component && $bp->is_single_item && 'forum' == $bp->current_action && 'topic' == $bp->action_variables[0] && 'edit' == $bp->action_variables[2] )
+		return true;
+
+	return false;
+}
+
 function bp_is_group_members() {
 	global $bp;
 
@@ -1451,7 +1620,16 @@ function bp_is_group_members() {
 function bp_is_group_invites() {
 	global $bp;
 
-	if ( BP_GROUPS_SLUG == $bp->current_component && 'invites' == $bp->current_action )
+	if ( BP_GROUPS_SLUG == $bp->current_component && 'send-invites' == $bp->current_action )
+		return true;
+
+	return false;
+}
+
+function bp_is_group_membership_request() {
+	global $bp;
+
+	if ( BP_GROUPS_SLUG == $bp->current_component && 'request-membership' == $bp->current_action )
 		return true;
 
 	return false;
@@ -1478,7 +1656,7 @@ function bp_is_group_single() {
 function bp_is_user_blogs() {
 	global $bp;
 
-	if ( BP_BLOGS_SLUG == $bp->current_component && ( !$bp->current_action || 'my-blogs' == $bp->current_action ) )
+	if ( BP_BLOGS_SLUG == $bp->current_component )
 		return true;
 
 	return false;
@@ -1514,7 +1692,7 @@ function bp_is_create_blog() {
 function bp_is_user_friends() {
 	global $bp;
 
-	if ( BP_FRIENDS_SLUG == $bp->current_component && ( !$bp->current_action || 'my-friends' == $bp->current_action ) )
+	if ( BP_FRIENDS_SLUG == $bp->current_component )
 		return true;
 
 	return false;
@@ -1524,6 +1702,15 @@ function bp_is_friend_requests() {
 	global $bp;
 
 	if ( BP_FRIENDS_SLUG == $bp->current_component && 'requests' == $bp->current_action )
+		return true;
+
+	return false;
+}
+
+function bp_is_user_messages() {
+	global $bp;
+
+	if ( BP_MESSAGES_SLUG == $bp->current_component )
 		return true;
 
 	return false;
@@ -1602,14 +1789,8 @@ function bp_the_body_class() {
 	function bp_get_the_body_class( $wp_classes, $custom_classes = false ) {
 		global $bp;
 
-		if ( bp_is_blog_page() && is_front_page() && $bp->current_component != BP_HOME_BLOG_SLUG )
+		if ( bp_is_front_page() )
 			$bp_classes[] = 'home-page';
-
-		if ( bp_is_blog_page() || bp_is_register_page() || bp_is_activation_page() )
-			$bp_classes[] = 'blog-page';
-
-		if ( !bp_is_blog_page() && !bp_is_register_page() && !bp_is_activation_page() )
-			$bp_classes[] = 'internal-page';
 
 		if ( bp_is_directory() )
 			$bp_classes[] = 'directory';
@@ -1617,14 +1798,11 @@ function bp_the_body_class() {
 		if ( bp_is_user_profile() && !bp_is_blog_page() )
 			$bp_classes[] = 'profile';
 
-		if ( bp_is_activity_component() && !bp_is_blog_page()  )
+		if ( bp_is_activity_component() && !bp_is_blog_page() || ( bp_is_activity_front_page() && bp_is_front_page() ) )
 			$bp_classes[] = 'activity';
 
 		if ( bp_is_blogs_component() && !bp_is_blog_page()  )
 			$bp_classes[] = 'blogs';
-
-		if ( bp_is_wire_component() && !bp_is_blog_page()  )
-			$bp_classes[] = 'wire';
 
 		if ( bp_is_messages_component() && !bp_is_blog_page()  )
 			$bp_classes[] = 'messages';
@@ -1686,11 +1864,11 @@ function bp_the_body_class() {
 		if ( bp_is_group_forum_topic() )
 			$bp_classes[] = 'group-forum-topic';
 
+		if ( bp_is_group_forum_topic_edit() )
+			$bp_classes[] = 'group-forum-topic-edit';
+
 		if ( bp_is_group_forum() )
 			$bp_classes[] = 'group-forum';
-
-		if ( bp_is_group_wire() )
-			$bp_classes[] = 'group-wire';
 
 		if ( bp_is_group_admin_page() )
 			$bp_classes[] = 'group-admin';
@@ -1701,9 +1879,6 @@ function bp_the_body_class() {
 		if ( bp_is_group_home() )
 			$bp_classes[] = 'group-home';
 
-		if ( bp_is_profile_wire() )
-			$bp_classes[] = 'profile-wire';
-
 		if ( bp_is_change_avatar() )
 			$bp_classes[] = 'change-avatar';
 
@@ -1713,8 +1888,11 @@ function bp_the_body_class() {
 		if ( bp_is_user_friends_activity() )
 			$bp_classes[] = 'friends-activity';
 
-		if ( bp_is_user_activity() )
+		if ( bp_is_user_activity() && !bp_is_directory() )
 			$bp_classes[] = 'my-activity';
+
+		if ( bp_is_activity_permalink() )
+			$bp_classes[] = 'activity-permalink';
 
 		if ( bp_is_register_page() )
 			$bp_classes[] = 'registration';

@@ -9,37 +9,21 @@
  * @uses get_option() Selects a site setting from the DB.
  */
 function bp_core_add_admin_bar_css() {
-	global $current_blog;
+	global $bp, $current_blog;
 
 	if ( defined( 'BP_DISABLE_ADMIN_BAR' ) )
 		return false;
 
-	/* Fetch the admin bar css from the active theme location */
-	if ( file_exists( WP_CONTENT_DIR . '/themes/' . get_blog_option( BP_ROOT_BLOG, 'stylesheet' ) . '/_inc/css/adminbar.css' ) )
-		$admin_bar_css = WP_CONTENT_URL . '/themes/' . get_blog_option( BP_ROOT_BLOG, 'stylesheet' ) . '/_inc/css/adminbar.css';
-	else if ( file_exists( WP_CONTENT_DIR . '/' . get_blog_option( BP_ROOT_BLOG, 'template' ) . '/_inc/css/adminbar.css' ) )
-		$admin_bar_css = WP_CONTENT_URL . '/themes/' . get_blog_option( BP_ROOT_BLOG, 'template' ) . '/_inc/css/adminbar.css';
-	else
-		$admin_bar_css = BP_PLUGIN_URL . '/bp-core/deprecated/css/admin-bar.css';
+	if ( ( bp_core_is_multisite() && $current_blog->blog_id != BP_ROOT_BLOG ) || is_admin() ) {
+		$stylesheet = get_blog_option( BP_ROOT_BLOG, 'stylesheet' );
 
-	wp_enqueue_style( 'bp-admin-bar', apply_filters( 'bp_core_admin_bar_css', $admin_bar_css ) );
+		if ( file_exists( WP_CONTENT_DIR . '/themes/' . $stylesheet . '/_inc/css/adminbar.css' ) )
+			wp_enqueue_style( 'bp-admin-bar', apply_filters( 'bp_core_admin_bar_css', WP_CONTENT_URL . '/themes/' . $stylesheet . '/_inc/css/adminbar.css' ) );
+		else
+			wp_enqueue_style( 'bp-admin-bar', apply_filters( 'bp_core_admin_bar_css', BP_PLUGIN_URL . '/bp-themes/bp-default/_inc/css/adminbar.css' ) );
+	}
 }
-add_action( 'admin_menu', 'bp_core_add_admin_bar_css' );
-add_action( 'template_redirect', 'bp_core_add_admin_bar_css' );
-
-/**
- * bp_core_add_admin_bar_js()
- *
- * Add the minor JS needed for the admin bar.
- *
- * @package BuddyPress Core
- * @uses get_option() Selects a site setting from the DB.
- */
-function bp_core_add_admin_bar_js() {
-	wp_enqueue_script( 'bp-admin-bar-js', BP_PLUGIN_URL . '/bp-core/js/admin-bar.js', array( 'jquery' ) );
-}
-add_action( 'admin_menu', 'bp_core_add_admin_bar_js' );
-add_action( 'wp', 'bp_core_add_admin_bar_js' );
+add_action( 'init', 'bp_core_add_admin_bar_css' );
 
 /**
  * bp_core_admin_menu_icon_css()
@@ -61,6 +45,10 @@ function bp_core_admin_menu_icon_css() {
 add_action( 'admin_head', 'bp_core_admin_menu_icon_css' );
 
 function bp_core_confirmation_js() {
+	global $current_blog;
+
+	if ( $current_blog->blog_id != BP_ROOT_BLOG )
+		return false;
 ?>
 	<script type="text/javascript"> jQuery(document).ready( function() { jQuery("a.confirm").click( function() { if ( confirm( '<?php _e( 'Are you sure?', 'buddypress' ) ?>' ) ) return true; else return false; }); });</script>
 <?php
@@ -91,7 +79,6 @@ function bp_core_add_cropper_inline_js() {
 	global $bp;
 
 	$image = apply_filters( 'bp_inline_cropper_image', getimagesize( $bp->avatar_admin->image->dir ) );
-
 	$aspect_ratio = 1;
 
 	/* Calculate Aspect Ratio */
@@ -105,7 +92,7 @@ function bp_core_add_cropper_inline_js() {
 				onSelect: showPreview,
 				onSelect: updateCoords,
 				aspectRatio: <?php echo $aspect_ratio ?>,
-				setSelect: [ 50, 50, 200, 200 ]
+				setSelect: [ 50, 50, <?php echo $image[0] / 2 ?>, <?php echo $image[1] / 2 ?> ]
 			});
 		});
 
@@ -172,7 +159,7 @@ function bp_core_add_ajax_url_js() {
 	global $bp;
 
 	echo
-'<script type="text/javascript">var ajaxurl = "' . $bp->root_domain . str_replace( 'index.php', 'wp-load.php', $_SERVER['SCRIPT_NAME'] ) . '";</script>
+'<script type="text/javascript">var ajaxurl = "' . site_url( 'wp-load.php' ) . '";</script>
 ';
 }
 add_action( 'wp_head', 'bp_core_add_ajax_url_js' );
@@ -185,7 +172,9 @@ add_action( 'wp_head', 'bp_core_add_ajax_url_js' );
  * @package BuddyPress Core
  */
 function bp_core_override_adminbar_css() {
-	if ( defined( 'BP_DISABLE_ADMIN_BAR' ) || ( get_site_option( 'hide-loggedout-adminbar' ) && !is_user_logged_in() ) ) {
+	global $bp;
+
+	if ( defined( 'BP_DISABLE_ADMIN_BAR' ) || ( $bp->site_options['hide-loggedout-adminbar'] && !is_user_logged_in() ) ) {
 	?>
 <style type="text/css">body { padding-top: 0 !important; } #wp-admin-bar { display: none; }</style>
 	<?php }

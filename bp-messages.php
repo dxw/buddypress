@@ -1,6 +1,6 @@
 <?php
 
-define ( 'BP_MESSAGES_DB_VERSION', '1800' );
+define ( 'BP_MESSAGES_DB_VERSION', '2000' );
 
 /* Define the slug for the component */
 if ( !defined( 'BP_MESSAGES_SLUG' ) )
@@ -11,49 +11,35 @@ require ( BP_PLUGIN_DIR . '/bp-messages/bp-messages-cssjs.php' );
 require ( BP_PLUGIN_DIR . '/bp-messages/bp-messages-templatetags.php' );
 require ( BP_PLUGIN_DIR . '/bp-messages/bp-messages-filters.php' );
 
-/* Include deprecated functions if settings allow */
-if ( !defined( 'BP_IGNORE_DEPRECATED' ) )
-	require ( BP_PLUGIN_DIR . '/bp-messages/deprecated/bp-messages-deprecated.php' );
-
 function messages_install() {
 	global $wpdb, $bp;
 
 	if ( !empty($wpdb->charset) )
 		$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
 
-	$sql[] = "CREATE TABLE {$bp->messages->table_name_threads} (
-		  		id bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		  		message_ids longtext NOT NULL,
-				sender_ids longtext NOT NULL,
-		  		first_post_date datetime NOT NULL,
-		  		last_post_date datetime NOT NULL,
-		  		last_message_id bigint(20) NOT NULL,
-				last_sender_id bigint(20) NOT NULL,
-			    KEY last_message_id (last_message_id),
-			    KEY last_sender_id (last_sender_id)
-		 	   ) {$charset_collate};";
-
 	$sql[] = "CREATE TABLE {$bp->messages->table_name_recipients} (
 		  		id bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		  		user_id bigint(20) NOT NULL,
 		  		thread_id bigint(20) NOT NULL,
-				sender_only tinyint(1) NOT NULL DEFAULT '0',
 		  		unread_count int(10) NOT NULL DEFAULT '0',
+				sender_only tinyint(1) NOT NULL DEFAULT '0',
 				is_deleted tinyint(1) NOT NULL DEFAULT '0',
 			    KEY user_id (user_id),
 			    KEY thread_id (thread_id),
 				KEY is_deleted (is_deleted),
-			    KEY sender_only (sender_only),
+				KEY sender_only (sender_only),
 			    KEY unread_count (unread_count)
 		 	   ) {$charset_collate};";
 
 	$sql[] = "CREATE TABLE {$bp->messages->table_name_messages} (
 		  		id bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		  		thread_id bigint(20) NOT NULL,
 		  		sender_id bigint(20) NOT NULL,
 		  		subject varchar(200) NOT NULL,
 		  		message longtext NOT NULL,
 		  		date_sent datetime NOT NULL,
-			    KEY sender_id (sender_id)
+			    KEY sender_id (sender_id),
+			    KEY thread_id (thread_id)
 		 	   ) {$charset_collate};";
 
 	$sql[] = "CREATE TABLE {$bp->messages->table_name_notices} (
@@ -68,6 +54,14 @@ function messages_install() {
 	require_once( ABSPATH . 'wp-admin/upgrade-functions.php' );
 	dbDelta($sql);
 
+	/* Upgrade and remove the message threads table if it exists */
+	if ( $wpdb->get_var( "SHOW TABLES LIKE '%{$wpdb->base_prefix}bp_messages_threads%'" ) ) {
+		$upgrade = BP_Messages_Thread::upgrade_tables();
+
+		if ( $upgrade )
+			$wpdb->query( "DROP TABLE {$wpdb->base_prefix}bp_messages_threads" );
+	}
+
 	add_site_option( 'bp-messages-db-version', BP_MESSAGES_DB_VERSION );
 }
 
@@ -77,11 +71,9 @@ function messages_setup_globals() {
 	/* For internal identification */
 	$bp->messages->id = 'messages';
 
-	$bp->messages->table_name_threads = $wpdb->base_prefix . 'bp_messages_threads';
 	$bp->messages->table_name_messages = $wpdb->base_prefix . 'bp_messages_messages';
 	$bp->messages->table_name_recipients = $wpdb->base_prefix . 'bp_messages_recipients';
 	$bp->messages->table_name_notices = $wpdb->base_prefix . 'bp_messages_notices';
-	$bp->messages->format_activity_function = 'messages_format_activity';
 	$bp->messages->format_notification_function = 'messages_format_notifications';
 	$bp->messages->slug = BP_MESSAGES_SLUG;
 
@@ -90,8 +82,7 @@ function messages_setup_globals() {
 
 	do_action( 'messages_setup_globals' );
 }
-add_action( 'plugins_loaded', 'messages_setup_globals', 5 );
-add_action( 'admin_menu', 'messages_setup_globals', 2 );
+add_action( 'bp_setup_globals', 'messages_setup_globals' );
 
 function messages_check_installed() {
 	global $wpdb, $bp;
@@ -100,7 +91,7 @@ function messages_check_installed() {
 		return false;
 
 	/* Need to check db tables exist, activate hook no-worky in mu-plugins folder. */
-	if ( get_site_option('bp-messages-db-version') < BP_MESSAGES_DB_VERSION )
+	if ( $bp->site_options['bp-messages-db-version'] < BP_MESSAGES_DB_VERSION )
 		messages_install();
 }
 add_action( 'admin_menu', 'messages_check_installed' );
@@ -108,27 +99,26 @@ add_action( 'admin_menu', 'messages_check_installed' );
 function messages_setup_nav() {
 	global $bp;
 
-	if ( $bp->current_component == $bp->messages->slug ) {
-		$inbox_count = messages_get_unread_count();
-		$inbox_display = ( $inbox_count ) ? ' style="display:inline;"' : ' style="display:none;"';
-		$count_indicator = '&nbsp; <span' . $inbox_display . ' class="unread-count inbox-count">' . $inbox_count . '</span>';
-	}
+	if ( $count = messages_get_unread_count() )
+		$name = sprintf( __('Messages <strong>(%s)</strong>', 'buddypress'), $count );
+	else
+		$name = __('Messages <strong></strong>', 'buddypress');
 
 	/* Add 'Messages' to the main navigation */
-	bp_core_new_nav_item( array( 'name' => __('Messages', 'buddypress'), 'slug' => $bp->messages->slug, 'position' => 50, 'show_for_displayed_user' => false, 'screen_function' => 'messages_screen_inbox', 'default_subnav_slug' => 'inbox', 'item_css_id' => $bp->messages->id ) );
+	bp_core_new_nav_item( array( 'name' => $name, 'slug' => $bp->messages->slug, 'position' => 50, 'show_for_displayed_user' => false, 'screen_function' => 'messages_screen_inbox', 'default_subnav_slug' => 'inbox', 'item_css_id' => $bp->messages->id ) );
 
 	$messages_link = $bp->loggedin_user->domain . $bp->messages->slug . '/';
 
 	/* Add the subnav items to the profile */
-	bp_core_new_subnav_item( array( 'name' => __( 'Inbox', 'buddypress' ) . $count_indicator, 'slug' => 'inbox', 'parent_url' => $messages_link, 'parent_slug' => $bp->messages->slug, 'screen_function' => 'messages_screen_inbox', 'position' => 10, 'user_has_access' => bp_is_home() ) );
-	bp_core_new_subnav_item( array( 'name' => __( 'Sent Messages', 'buddypress' ), 'slug' => 'sentbox', 'parent_url' => $messages_link, 'parent_slug' => $bp->messages->slug, 'screen_function' => 'messages_screen_sentbox', 'position' => 20, 'user_has_access' => bp_is_home() ) );
-	bp_core_new_subnav_item( array( 'name' => __( 'Compose', 'buddypress' ), 'slug' => 'compose', 'parent_url' => $messages_link, 'parent_slug' => $bp->messages->slug, 'screen_function' => 'messages_screen_compose', 'position' => 30, 'user_has_access' => bp_is_home() ) );
+	bp_core_new_subnav_item( array( 'name' => __( 'Inbox', 'buddypress' ) . $count_indicator, 'slug' => 'inbox', 'parent_url' => $messages_link, 'parent_slug' => $bp->messages->slug, 'screen_function' => 'messages_screen_inbox', 'position' => 10, 'user_has_access' => bp_is_my_profile() ) );
+	bp_core_new_subnav_item( array( 'name' => __( 'Sent Messages', 'buddypress' ), 'slug' => 'sentbox', 'parent_url' => $messages_link, 'parent_slug' => $bp->messages->slug, 'screen_function' => 'messages_screen_sentbox', 'position' => 20, 'user_has_access' => bp_is_my_profile() ) );
+	bp_core_new_subnav_item( array( 'name' => __( 'Compose', 'buddypress' ), 'slug' => 'compose', 'parent_url' => $messages_link, 'parent_slug' => $bp->messages->slug, 'screen_function' => 'messages_screen_compose', 'position' => 30, 'user_has_access' => bp_is_my_profile() ) );
 
 	if ( is_site_admin() )
 		bp_core_new_subnav_item( array( 'name' => __( 'Notices', 'buddypress' ), 'slug' => 'notices', 'parent_url' => $messages_link, 'parent_slug' => $bp->messages->slug, 'screen_function' => 'messages_screen_notices', 'position' => 90, 'user_has_access' => is_site_admin() ) );
 
 	if ( $bp->current_component == $bp->messages->slug ) {
-		if ( bp_is_home() ) {
+		if ( bp_is_my_profile() ) {
 			$bp->bp_options_title = __( 'My Messages', 'buddypress' );
 		} else {
 			$bp_options_avatar =  bp_core_fetch_avatar( array( 'item_id' => $bp->displayed_user->id, 'type' => 'thumb' ) );
@@ -138,7 +128,7 @@ function messages_setup_nav() {
 
 	do_action( 'messages_setup_nav' );
 }
-add_action( 'plugins_loaded', 'messages_setup_nav' );
+add_action( 'bp_setup_nav', 'messages_setup_nav' );
 add_action( 'admin_menu', 'messages_setup_nav' );
 
 
@@ -152,12 +142,12 @@ add_action( 'admin_menu', 'messages_setup_nav' );
 
 function messages_screen_inbox() {
 	do_action( 'messages_screen_inbox' );
-	bp_core_load_template( apply_filters( 'messages_template_inbox', 'messages/index' ) );
+	bp_core_load_template( apply_filters( 'messages_template_inbox', 'members/single/home' ) );
 }
 
 function messages_screen_sentbox() {
 	do_action( 'messages_screen_sentbox' );
-	bp_core_load_template( apply_filters( 'messages_template_sentbox', 'messages/sentbox' ) );
+	bp_core_load_template( apply_filters( 'messages_template_sentbox', 'members/single/home' ) );
 }
 
 function messages_screen_compose() {
@@ -177,8 +167,13 @@ function messages_screen_compose() {
 			bp_core_add_message( __( 'There was an error sending that message, please try again', 'buddypress' ), 'error' );
 		} else {
 			/* If this is a notice, send it */
-			if ( isset($_POST['send-notice']) ) {
-				messages_send_notice( $_POST['subject'], $_POST['content'] );
+			if ( isset( $_POST['send-notice'] ) ) {
+				if ( messages_send_notice( $_POST['subject'], $_POST['content'] ) ) {
+					bp_core_add_message( __( 'Notice sent successfully!', 'buddypress' ) );
+					bp_core_redirect( $bp->loggedin_user->domain . $bp->messages->slug . '/inbox/' );
+				} else {
+					bp_core_add_message( __( 'There was an error sending that notice, please try again', 'buddypress' ), 'error' );
+				}
 			} else {
 				/* Filter recipients into the format we need - array( 'username/userid', 'username/userid' ) */
 				$autocomplete_recipients = explode( ',', $_POST['send-to-input'] );
@@ -199,7 +194,7 @@ function messages_screen_compose() {
 
 	do_action( 'messages_screen_compose' );
 
-	bp_core_load_template( apply_filters( 'messages_template_compose', 'messages/compose' ) );
+	bp_core_load_template( apply_filters( 'messages_template_compose', 'members/single/home' ) );
 }
 
 function messages_screen_notices() {
@@ -237,7 +232,7 @@ function messages_screen_notices() {
 
 	do_action( 'messages_screen_notices' );
 
-	bp_core_load_template( apply_filters( 'messages_template_notices', 'messages/notices' ) );
+	bp_core_load_template( apply_filters( 'messages_template_notices', 'members/single/home' ) );
 }
 
 function messages_screen_notification_settings() {
@@ -308,8 +303,8 @@ function messages_action_view_message() {
 
 	do_action( 'messages_action_view_message' );
 
-	bp_core_new_subnav_item( array( 'name' => sprintf( __( 'From: %s', 'buddypress'), BP_Messages_Thread::get_last_sender($thread_id) ), 'slug' => 'view', 'parent_url' => $bp->loggedin_user->domain . $bp->messages->slug . '/', 'parent_slug' => $bp->messages->slug, 'screen_function' => true, 'position' => 40, 'user_has_access' => bp_is_home() ) );
-	bp_core_load_template( apply_filters( 'messages_template_view_message', 'messages/view' ) );
+	bp_core_new_subnav_item( array( 'name' => sprintf( __( 'From: %s', 'buddypress'), BP_Messages_Thread::get_last_sender($thread_id) ), 'slug' => 'view', 'parent_url' => $bp->loggedin_user->domain . $bp->messages->slug . '/', 'parent_slug' => $bp->messages->slug, 'screen_function' => true, 'position' => 40, 'user_has_access' => bp_is_my_profile() ) );
+	bp_core_load_template( apply_filters( 'messages_template_view_message', 'members/single/home' ) );
 }
 add_action( 'wp', 'messages_action_view_message', 3 );
 
@@ -410,7 +405,7 @@ function messages_new_message( $args = '' ) {
 	$r = wp_parse_args( $args, $defaults );
 	extract( $r, EXTR_SKIP );
 
-	if ( !$sender_id || !$subject || !$content )
+	if ( !$sender_id || !$content )
 		return false;
 
 	/* Create a new message object */
@@ -423,11 +418,18 @@ function messages_new_message( $args = '' ) {
 
 	/* If we have a thread ID, use the existing recipients, otherwise use the recipients passed */
 	if ( $thread_id ) {
-		$thread = new BP_Messages_Thread($thread_id);
+		$thread = new BP_Messages_Thread( $thread_id );
 		$message->recipients = $thread->get_recipients();
+
+		if ( empty( $message->subject ) )
+			$message->subject = sprintf( __( 'Re: %s', 'buddypress' ), $thread->messages[0]->subject );
+
 	} else {
 		if ( empty( $recipients ) )
 			return false;
+
+		if ( empty( $message->subject ) )
+			$message->subject = __( 'No Subject', 'buddypress' );
 
 		/* Loop the recipients and convert all usernames to user_ids where needed */
 		foreach( (array) $recipients as $recipient ) {
@@ -448,19 +450,22 @@ function messages_new_message( $args = '' ) {
 		if ( empty( $recipient_ids ) )
 			return false;
 
-		$message->recipients = $recipient_ids;
+		/* Format this to match existing recipients */
+		foreach( (array)$recipient_ids as $i => $recipient_id ) {
+			$message->recipients[$i] = new stdClass;
+			$message->recipients[$i]->user_id = $recipient_id;
+		}
 	}
 
 	if ( $message->send() ) {
 		require_once( BP_PLUGIN_DIR . '/bp-messages/bp-messages-notifications.php' );
 
 		// Send screen notifications to the recipients
-		foreach ( (array)$message->recipients as $recipient ) {
-			bp_core_add_notification( $message->id, $recipient, 'messages', 'new_message' );
-		}
+		foreach ( (array)$message->recipients as $recipient )
+			bp_core_add_notification( $message->id, $recipient->user_id, 'messages', 'new_message' );
 
 		// Send email notifications to the recipients
-		messages_notification_new_message( array( 'item_id' => $message->id, 'recipient_ids' => $message->recipients, 'thread_id' => $message->thread_id, 'component_name' => $bp->messages->slug, 'component_action' => 'message_sent', 'is_private' => 1 ) );
+		messages_notification_new_message( array( 'message_id' => $message->id, 'sender_id' => $message->sender_id, 'subject' => $message->subject, 'content' => $message->message, 'recipients' => $message->recipients, 'thread_id' => $message->thread_id) );
 
 		do_action( 'messages_message_sent', &$message );
 
@@ -490,6 +495,7 @@ function messages_send_notice( $subject, $message ) {
 }
 
 function messages_delete_thread( $thread_ids ) {
+
 	if ( is_array($thread_ids) ) {
 		$error = 0;
 		for ( $i = 0; $i < count($thread_ids); $i++ ) {
@@ -562,6 +568,14 @@ function messages_get_message_sender( $message_id ) {
 function messages_is_valid_thread( $thread_id ) {
 	return BP_Messages_Thread::is_valid( $thread_id );
 }
+
+
+/********************************************************************************
+ * Caching
+ *
+ * Caching functions handle the clearing of cached objects and pages on specific
+ * actions throughout BuddyPress.
+ */
 
 // List actions to clear super cached pages on, if super cache is installed
 add_action( 'messages_delete_thread', 'bp_core_clear_cache' );

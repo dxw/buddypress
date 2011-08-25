@@ -19,21 +19,13 @@ Class BP_XProfile_Data_Template {
 	var $user_id;
 
 	function bp_xprofile_data_template( $user_id, $profile_group_id ) {
-
-		if ( !$profile_group_id ) {
-			if ( !$this->groups = wp_cache_get( 'xprofile_groups', 'bp' ) ) {
-				$this->groups = BP_XProfile_Group::get_all(true);
-				wp_cache_set( 'xprofile_groups', $this->groups, 'bp' );
-			}
-		} else {
-			if ( !$this->groups = wp_cache_get( 'xprofile_group_' . $profile_group_id, 'bp' ) ) {
-				$this->groups = new BP_XProfile_Group( $profile_group_id );
-				wp_cache_set( 'xprofile_group_' . $profile_group_id, 'bp' );
-			}
-
-			/* We need to put this single group into the same format as multiple group (an array) */
-			$this->groups = array( $this->groups );
-		}
+		$this->groups = BP_XProfile_Group::get( array(
+			'profile_group_id' => $profile_group_id,
+			'user_id' => $user_id,
+			'hide_empty_groups' => true,
+			'fetch_fields' => true,
+			'fetch_field_data' => true
+		) );
 
 		$this->group_count = count($this->groups);
 		$this->user_id = $user_id;
@@ -50,20 +42,7 @@ Class BP_XProfile_Data_Template {
 		$this->current_group++;
 
 		$this->group = $this->groups[$this->current_group];
-
-		if ( !$fields = wp_cache_get( 'xprofile_fields_' . $this->group->id . '_' . $this->user_id, 'bp' ) ) {
-			for ( $i = 0; $i < count($this->group->fields); $i++ ) {
-				/* Don't try and fetch any existing profile data if we are using this loop on the registration page */
-				$get_data = ( !bp_is_register_page() ) ? true : false;
-
-				$field = new BP_XProfile_Field( $this->group->fields[$i]->id, $this->user_id, $get_data );
-				$fields[$i] = $field;
-			}
-
-			wp_cache_set( 'xprofile_fields_' . $this->group->id . '_' . $this->user_id, $fields, 'bp' );
-		}
-
-		$this->group->fields = apply_filters( 'xprofile_group_fields', $fields, $this->group->id );
+		$this->group->fields = apply_filters( 'xprofile_group_fields', $this->group->fields, $this->group->id );
 		$this->field_count = count( $this->group->fields );
 
 		return $this->group;
@@ -117,21 +96,14 @@ Class BP_XProfile_Data_Template {
 
 	function has_fields() {
 		$has_data = false;
-		$just_name = true;
 
 		for ( $i = 0; $i < count( $this->group->fields ); $i++ ) {
 			$field = &$this->group->fields[$i];
 
 			if ( $field->data->value != null ) {
 				$has_data = true;
-
-				if ( 1 != $field->id )
-					$just_name = false;
 			}
 		}
-
-		if ( 1 == $this->group->id && $just_name )
-			return false;
 
 		if ( $has_data )
 			return true;
@@ -155,7 +127,7 @@ Class BP_XProfile_Data_Template {
 
 		$field = $this->next_field();
 
-		if ( $field->data->value != '' ) {
+		if ( !empty( $field->data->value ) ) {
 			$this->field_has_data = true;
 		}
 		else {
@@ -197,11 +169,6 @@ function bp_profile_group_has_fields() {
 	global $profile_template;
 	return $profile_template->has_fields();
 }
-	/* Deprecated: Don't use this as it it too easily confused with site groups */
-	function bp_group_has_fields() {
-		return bp_profile_group_has_fields();
-	}
-
 
 function bp_field_css_class( $class = false ) {
 	echo bp_get_field_css_class( $class );
@@ -350,7 +317,7 @@ function bp_the_profile_field_edit_value() {
 
 		$field->data->value = bp_unserialize_profile_field( $field->data->value );
 
-		return apply_filters( 'bp_get_the_profile_field_edit_value', $field->data->value );
+		return apply_filters( 'bp_get_the_profile_field_edit_value', esc_html( $field->data->value ) );
 	}
 
 function bp_the_profile_field_type() {
@@ -392,6 +359,9 @@ function bp_the_profile_field_options( $args = '' ) {
 
 		$r = wp_parse_args( $args, $defaults );
 		extract( $r, EXTR_SKIP );
+
+		if ( !method_exists( $field, 'get_children' ) )
+			$field = new BP_XProfile_Field( $field->id );
 
 		$options = $field->get_children();
 
@@ -478,18 +448,18 @@ function bp_the_profile_field_options( $args = '' ) {
 				}
 
 				/* Check for updated posted values, but errors preventing them from being saved first time */
-				if ( isset( $_POST['field_' . $field->id . '_day'] ) && $day != $_POST['field_' . $field->id . '_day'] ) {
-					if ( !empty( $_POST['field_' . $field->id . '_day'] ) )
+				if ( !empty( $_POST['field_' . $field->id . '_day'] ) ) {
+					if ( $day != $_POST['field_' . $field->id . '_day'] )
 						$day = $_POST['field_' . $field->id . '_day'];
 				}
 
-				if ( isset( $_POST['field_' . $field->id . '_month'] ) && $month != $_POST['field_' . $field->id . '_month'] ) {
-					if ( !empty( $_POST['field_' . $field->id . '_month'] ) )
+				if ( !empty( $_POST['field_' . $field->id . '_month'] ) ) {
+					if ( $month != $_POST['field_' . $field->id . '_month'] )
 						$month = $_POST['field_' . $field->id . '_month'];
 				}
 
-				if ( isset( $_POST['field_' . $field->id . '_year'] ) && $year != date("j", $_POST['field_' . $field->id . '_year'] ) ) {
-					if ( !empty( $_POST['field_' . $field->id . '_year'] ) )
+				if ( !empty( $_POST['field_' . $field->id . '_year'] ) ) {
+					if ( $year != date( "j", $_POST['field_' . $field->id . '_year'] ) )
 						$year = $_POST['field_' . $field->id . '_year'];
 				}
 
@@ -571,11 +541,26 @@ function bp_unserialize_profile_field( $value ) {
 	return $value;
 }
 
+function bp_profile_field_data( $args = '' ) {
+	echo bp_get_profile_field_data( $args );
+}
+	function bp_get_profile_field_data( $args = '' ) {
+		$defaults = array(
+			'field' => false, // Field name or ID.
+			'user_id' => $bp->displayed_user->id
+			);
+
+		$r = wp_parse_args( $args, $defaults );
+		extract( $r, EXTR_SKIP );
+
+		return apply_filters( 'bp_get_profile_field_data', xprofile_get_field_data( $field, $user_id ) );
+	}
+
 function bp_profile_group_tabs() {
 	global $bp, $group_name;
 
 	if ( !$groups = wp_cache_get( 'xprofile_groups_inc_empty', 'bp' ) ) {
-		$groups = BP_XProfile_Group::get_all();
+		$groups = BP_XProfile_Group::get( array( 'fetch_fields' => true ) );
 		wp_cache_set( 'xprofile_groups_inc_empty', $groups, 'bp' );
 	}
 
@@ -634,7 +619,7 @@ function bp_profile_group_name( $deprecated = true ) {
 function bp_avatar_upload_form() {
 	global $bp;
 
-	if ( !(int)get_site_option( 'bp-disable-avatar-uploads' ) )
+	if ( !(int)$bp->site_options['bp-disable-avatar-uploads'] )
 		bp_core_avatar_admin( null, $bp->loggedin_user->domain . $bp->profile->slug . '/change-avatar/', $bp->loggedin_user->domain . $bp->profile->slug . '/delete-avatar/' );
 	else
 		_e( 'Avatar uploads are currently disabled. Why not use a <a href="http://gravatar.com" target="_blank">gravatar</a> instead?', 'buddypress' );
