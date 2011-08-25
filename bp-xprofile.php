@@ -27,11 +27,7 @@ function xprofile_install() {
 	if ( !empty($wpdb->charset) )
 		$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
 
-	if ( empty( $bp->site_options['bp-xprofile-base-group-name'] ) )
-		update_site_option( 'bp-xprofile-base-group-name', 'Base' );
-
-	if ( empty( $bp->site_options['bp-xprofile-fullname-field-name'] ) )
-		update_site_option( 'bp-xprofile-fullname-field-name', 'Name' );
+	bp_core_activate_site_options( array( 'bp-xprofile-base-group-name' => 'Base', 'bp-xprofile-fullname-field-name' => 'Name' ) );
 
 	$sql[] = "CREATE TABLE {$bp->profile->table_name_groups} (
 			  id bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -879,7 +875,7 @@ function xprofile_avatar_upload_dir( $directory = false, $user_id = false ) {
 	if ( !file_exists( $path ) )
 		@wp_mkdir_p( $path );
 
-	$newurl = str_replace( BP_AVATAR_UPLOAD_PATH, BP_AVATAR_URL, $path );
+	$newurl  = BP_AVATAR_URL . '/avatars/' . $user_id;
 	$newburl = $newurl;
 	$newsubdir = '/avatars/' . $user_id;
 
@@ -926,6 +922,24 @@ function xprofile_sync_wp_profile( $user_id = false ) {
 add_action( 'xprofile_updated_profile', 'xprofile_sync_wp_profile' );
 add_action( 'bp_core_signup_user', 'xprofile_sync_wp_profile' );
 
+
+/* xprofile_sync_bp_profile()
+ *
+ * Syncs the standard built in WordPress profile data to XProfile.
+ *
+ * @since 1.2.4
+ * @package BuddyPress Core
+ */
+function xprofile_sync_bp_profile( &$errors, $update, &$user ) {
+	global $bp;
+
+	if ( (int)$bp->site_options['bp-disable-profile-sync'] || !$update || $errors->get_error_codes() )
+		return;
+
+	xprofile_set_field_data( BP_XPROFILE_FULLNAME_FIELD_NAME, $user->ID, $user->display_name );
+}
+add_action( 'user_profile_update_errors', 'xprofile_sync_bp_profile', 10, 3 );
+
 /**
  * xprofile_remove_screen_notifications()
  *
@@ -969,8 +983,9 @@ function xprofile_remove_data( $user_id ) {
 	delete_usermeta( $user_id, 'bp_core_avatar_v2' );
 	delete_usermeta( $user_id, 'bp_core_avatar_v2_path' );
 }
-add_action( 'wpmu_delete_user', 'xprofile_remove_data', 1 );
-add_action( 'delete_user', 'xprofile_remove_data', 1 );
+add_action( 'wpmu_delete_user', 'xprofile_remove_data' );
+add_action( 'delete_user', 'xprofile_remove_data' );
+add_action( 'make_spam_user', 'xprofile_remove_data' );
 
 
 /********************************************************************************

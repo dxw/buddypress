@@ -4,12 +4,12 @@ Plugin Name: BuddyPress
 Plugin URI: http://buddypress.org/download/
 Description: Social networking in a box. Build a social network for your company, school, sports team or niche community all based on the power and flexibility of WordPress.
 Author: The BuddyPress Community
-Version: 1.2.3
+Version: 1.2.4
 Author URI: http://buddypress.org/developers/
-Site Wide Only: true
+Network: true
 */
 
-define( 'BP_VERSION', '1.2.3' );
+define( 'BP_VERSION', '1.2.4' );
 
 /***
  * This file will load in each BuddyPress component based on which
@@ -63,6 +63,9 @@ function bp_loader_activate() {
 	/* Switch the user to the new bp-default if they are using the old bp-default on activation. */
 	if ( 'bp-sn-parent' == get_blog_option( BP_ROOT_BLOG, 'template' ) && 'bp-default' == get_blog_option( BP_ROOT_BLOG, 'stylesheet' ) )
 		switch_theme( 'bp-default', 'bp-default' );
+
+	/* Install site options on activation */
+	bp_core_activate_site_options( array( 'bp-disable-account-deletion' => 0, 'bp-disable-avatar-uploads' => 0, 'bp-disable-blogforum-comments' => 0,  'bp-disable-forum-directory' => 0,  'bp-disable-profile-sync' => 0 ) );
 
 	do_action( 'bp_loader_activate' );
 }

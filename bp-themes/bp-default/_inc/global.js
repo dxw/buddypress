@@ -819,7 +819,7 @@ jq(document).ready( function() {
 
 	/** Alternate Highlighting ******************************************/
 
-	jq('table tr, div.message-box, ul#topic-post-list li').each( function(i) {
+	jq('table tr, div.message-box').each( function(i) {
 		if ( i % 2 != 1 )
 			jq(this).addClass('alt');
 	});
@@ -1077,7 +1077,7 @@ function bp_filter_request( object, filter, scope, target, search_terms, page, e
 	if ( 'activity' == object )
 		return false;
 
-	if ( jq.query.get('s') )
+	if ( jq.query.get('s') && !search_terms )
 		search_terms = jq.query.get('s');
 
 	if ( null == scope )

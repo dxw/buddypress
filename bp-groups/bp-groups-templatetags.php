@@ -64,7 +64,7 @@ class BP_Groups_Template {
 		}
 
 		$this->pag_links = paginate_links( array(
-			'base' => add_query_arg( array( 'grpage' => '%#%', 'num' => $this->pag_num, 's' => $_REQUEST['s'], 'sortby' => $this->sort_by, 'order' => $this->order ) ),
+			'base' => add_query_arg( array( 'grpage' => '%#%', 'num' => $this->pag_num, 's' => $search_terms, 'sortby' => $this->sort_by, 'order' => $this->order ) ),
 			'format' => '',
 			'total' => ceil($this->total_group_count / $this->pag_num),
 			'current' => $this->pag_page,
@@ -551,11 +551,12 @@ function bp_groups_pagination_links() {
 function bp_groups_pagination_count() {
 	global $bp, $groups_template;
 
-	$from_num = bp_core_number_format( intval( ( $groups_template->pag_page - 1 ) * $groups_template->pag_num ) + 1 );
-	$to_num = bp_core_number_format( ( $from_num + ( $groups_template->pag_num - 1 ) > $groups_template->total_group_count ) ? $groups_template->total_group_count : $from_num + ( $groups_template->pag_num - 1 ) );
+	$start_num = intval( ( $groups_template->pag_page - 1 ) * $groups_template->pag_num ) + 1;
+	$from_num = bp_core_number_format( $start_num );
+	$to_num = bp_core_number_format( ( $start_num + ( $groups_template->pag_num - 1 ) > $groups_template->total_group_count ) ? $groups_template->total_group_count : $start_num + ( $groups_template->pag_num - 1 ) );
 	$total = bp_core_number_format( $groups_template->total_group_count );
 
-	echo sprintf( __( 'Viewing group %s to %s (of %s groups)', 'buddypress' ), $from_num, $to_num, $total ); ?> &nbsp;
+	echo sprintf( __( 'Viewing group %1$s to %2$s (of %3$s groups)', 'buddypress' ), $from_num, $to_num, $total ); ?> &nbsp;
 	<span class="ajax-loader"></span><?php
 }
 
@@ -955,19 +956,38 @@ function bp_group_has_requested_membership( $group = false ) {
 	return false;
 }
 
+/**
+ * bp_group_is_member()
+ *
+ * Checks if current user is member of a group.
+ *
+ * @uses is_site_admin Check if current user is super admin
+ * @uses apply_filters Creates bp_group_is_member filter and passes $is_member
+ * @usedby groups/activity.php, groups/single/forum/edit.php, groups/single/forum/topic.php to determine template part visibility
+ * @global array $bp BuddyPress Master global
+ * @global object $groups_template Current Group (usually in template loop)
+ * @param object $group Group to check is_member
+ * @return bool If user is member of group or not
+ */
 function bp_group_is_member( $group = false ) {
 	global $bp, $groups_template;
 
+	// Site admins always have access
 	if ( is_site_admin() )
 		return true;
 
+	// Load group if none passed
 	if ( !$group )
 		$group =& $groups_template->group;
 
+	// Check membership
 	if ( null == $group->is_member )
-		return false;
+		$is_member = false;
+	else
+		$is_member = true;
 
-	return true;
+	// Return
+	return apply_filters( 'bp_group_is_member', $is_member );
 }
 
 function bp_group_accept_invite_link() {
@@ -1403,11 +1423,12 @@ function bp_group_member_pagination_count() {
 	function bp_get_group_member_pagination_count() {
 		global $members_template;
 
-		$from_num = bp_core_number_format( intval( ( $members_template->pag_page - 1 ) * $members_template->pag_num ) + 1 );
-		$to_num = bp_core_number_format( ( $from_num + ( $members_template->pag_num - 1 ) > $members_template->total_member_count ) ? $members_template->total_member_count : $from_num + ( $members_template->pag_num - 1 ) );
+		$start_num = intval( ( $members_template->pag_page - 1 ) * $members_template->pag_num ) + 1;
+		$from_num = bp_core_number_format( $start_num );
+		$to_num = bp_core_number_format( ( $start_num + ( $members_template->pag_num - 1 ) > $members_template->total_member_count ) ? $members_template->total_member_count : $start_num + ( $members_template->pag_num - 1 ) );
 		$total = bp_core_number_format( $members_template->total_member_count );
 
-		return apply_filters( 'bp_get_group_member_pagination_count', sprintf( __( 'Viewing members %s to %s (of %s members)', 'buddypress' ), $from_num, $to_num, $total ) );
+		return apply_filters( 'bp_get_group_member_pagination_count', sprintf( __( 'Viewing members %1$s to %2$s (of %3$s members)', 'buddypress' ), $from_num, $to_num, $total ) );
 	}
 
 function bp_group_member_admin_pagination() {

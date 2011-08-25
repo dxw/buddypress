@@ -1,3 +1,5 @@
+<?php do_action( 'bp_before_group_forum_topic' ) ?>
+
 <?php if ( bp_has_forum_topic_posts() ) : ?>
 
 	<form action="<?php bp_forum_topic_action() ?>" method="post" id="forum-topic-form" class="standard-form">
@@ -16,17 +18,19 @@
 
 		<div id="topic-meta">
 			<h3><?php bp_the_topic_title() ?> (<?php bp_the_topic_total_post_count() ?>)</h3>
-			<a class="button" href="<?php bp_forum_permalink() ?>/">&larr; <?php _e( 'Group Forum', 'buddypress' ) ?></a> &nbsp; <a class="button" href="<?php bp_forum_directory_permalink() ?>/"><?php _e( 'Group Forum Directory', 'buddypress') ?></a></span>
+			<a class="button" href="<?php bp_forum_permalink() ?>/">&larr; <?php _e( 'Group Forum', 'buddypress' ) ?></a> &nbsp; <a class="button" href="<?php bp_forum_directory_permalink() ?>/"><?php _e( 'Group Forum Directory', 'buddypress') ?></a>
 
 			<?php if ( bp_group_is_admin() || bp_group_is_mod() || bp_get_the_topic_is_mine() ) : ?>
 				<div class="admin-links"><?php bp_the_topic_admin_links() ?></div>
 			<?php endif; ?>
 		</div>
 
+		<?php do_action( 'bp_before_group_forum_topic_posts' ) ?>
+
 		<ul id="topic-post-list" class="item-list">
 			<?php while ( bp_forum_topic_posts() ) : bp_the_forum_topic_post(); ?>
 
-				<li id="post-<?php bp_the_topic_post_id() ?>">
+				<li id="post-<?php bp_the_topic_post_id() ?>" class="<?php bp_the_topic_post_css_class() ?>">
 					<div class="poster-meta">
 						<a href="<?php bp_the_topic_post_poster_link() ?>">
 							<?php bp_the_topic_post_poster_avatar( 'width=40&height=40' ) ?>
@@ -47,7 +51,9 @@
 				</li>
 
 			<?php endwhile; ?>
-		</ul>
+		</ul><!-- #topic-post-list -->
+
+		<?php do_action( 'bp_after_group_forum_topic_posts' ) ?>
 
 		<div class="pagination no-ajax">
 
@@ -101,7 +107,7 @@
 
 		<?php endif; ?>
 
-	</form>
+	</form><!-- #forum-topic-form -->
 <?php else: ?>
 
 	<div id="message" class="info">
@@ -109,3 +115,5 @@
 	</div>
 
 <?php endif;?>
+
+<?php do_action( 'bp_after_group_forum_topic' ) ?>

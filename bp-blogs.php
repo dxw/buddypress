@@ -295,12 +295,12 @@ function bp_blogs_get_blogs( $args = '' ) {
 }
 
 function bp_blogs_record_existing_blogs() {
-	global $bp, $wpdb;
+	global $bp, $wpdb, $current_site;
 
 	/* Truncate user blogs table and re-record. */
 	$wpdb->query( "TRUNCATE TABLE {$bp->blogs->table_name}" );
 
-	$blog_ids = $wpdb->get_col( $wpdb->prepare( "SELECT blog_id FROM {$wpdb->base_prefix}blogs WHERE mature = 0 AND spam = 0 AND deleted = 0" ) );
+	$blog_ids = $wpdb->get_col( $wpdb->prepare( "SELECT blog_id FROM {$wpdb->base_prefix}blogs WHERE mature = 0 AND spam = 0 AND deleted = 0 AND site_id = %d" ), $current_site->id );
 
 	if ( $blog_ids ) {
 		foreach( (array)$blog_ids as $blog_id ) {
@@ -374,8 +374,6 @@ function bp_blogs_record_post( $post_id, $post, $user_id = false ) {
 		return false;
 
 	if ( 'publish' == $post->post_status && '' == $post->post_password ) {
-		bp_blogs_update_blogmeta( $recorded_post->blog_id, 'last_activity', gmdate( "Y-m-d H:i:s" ) );
-
 		if ( (int)get_blog_option( $blog_id, 'blog_public' ) || !bp_core_is_multisite() ) {
 			/* Record this in activity streams */
 			$post_permalink = get_permalink( $post_id );
@@ -426,8 +424,8 @@ function bp_blogs_record_comment( $comment_id, $is_approved = true ) {
 
 	if ( (int)get_blog_option( $recorded_comment->blog_id, 'blog_public' ) || !bp_core_is_multisite() ) {
 		/* Record in activity streams */
-		$comment_link = get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment_id;
-		$activity_action = sprintf( __( '%s commented on the blog post %s', 'buddypress' ), bp_core_get_userlink( $user_id ), '<a href="' . $comment_link . '#comment-' . $comment->comment_ID . '">' . $comment->post->post_title . '</a>' );
+		$comment_link = htmlspecialchars( get_comment_link( $comment->comment_ID ) );
+		$activity_action = sprintf( __( '%s commented on the blog post %s', 'buddypress' ), bp_core_get_userlink( $user_id ), '<a href="' . $comment_link . '">' . $comment->post->post_title . '</a>' );
 		$activity_content = $comment->comment_content;
 
 		/* Record this in activity streams */
@@ -441,9 +439,9 @@ function bp_blogs_record_comment( $comment_id, $is_approved = true ) {
 			'secondary_item_id' => $comment_id,
 			'recorded_time' => $comment->comment_date_gmt
 		) );
-	}
 
-	bp_blogs_update_blogmeta( $blog_id, 'last_activity', gmdate( "Y-m-d H:i:s" ) );
+		bp_blogs_update_blogmeta( $blog_id, 'last_activity', gmdate( "Y-m-d H:i:s" ) );
+	}
 
 	return $recorded_comment;
 }
@@ -607,7 +605,7 @@ add_action( 'wp', 'bp_blogs_redirect_to_random_blog', 6 );
 function bp_blogs_delete_blogmeta( $blog_id, $meta_key = false, $meta_value = false ) {
 	global $wpdb, $bp;
 
-	if ( !is_numeric( $blog_id ) )
+	if ( !is_numeric( $blog_id ) || !bp_core_is_multisite() )
 		return false;
 
 	$meta_key = preg_replace('|[^a-z0-9_]|i', '', $meta_key);
@@ -635,7 +633,7 @@ function bp_blogs_get_blogmeta( $blog_id, $meta_key = '') {
 
 	$blog_id = (int) $blog_id;
 
-	if ( !$blog_id )
+	if ( !$blog_id || !bp_core_is_multisite() )
 		return false;
 
 	if ( !empty($meta_key) ) {
@@ -667,7 +665,7 @@ function bp_blogs_get_blogmeta( $blog_id, $meta_key = '') {
 function bp_blogs_update_blogmeta( $blog_id, $meta_key, $meta_value ) {
 	global $wpdb, $bp;
 
-	if ( !is_numeric( $blog_id ) )
+	if ( !is_numeric( $blog_id ) || !bp_core_is_multisite() )
 		return false;
 
 	$meta_key = preg_replace( '|[^a-z0-9_]|i', '', $meta_key );
@@ -705,8 +703,9 @@ function bp_blogs_remove_data( $user_id ) {
 
 	do_action( 'bp_blogs_remove_data', $user_id );
 }
-add_action( 'wpmu_delete_user', 'bp_blogs_remove_data', 1 );
-add_action( 'delete_user', 'bp_blogs_remove_data', 1 );
+add_action( 'wpmu_delete_user', 'bp_blogs_remove_data' );
+add_action( 'delete_user', 'bp_blogs_remove_data' );
+add_action( 'make_spam_user', 'bp_blogs_remove_data' );
 
 
 /********************************************************************************

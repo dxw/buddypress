@@ -6,6 +6,8 @@ class BP_Forums_Template_Forum {
 	var $topics;
 	var $topic;
 
+	var $forum_id;
+
 	var $in_the_loop;
 
 	var $pag_page;
@@ -25,6 +27,7 @@ class BP_Forums_Template_Forum {
 		$this->pag_num = isset( $_REQUEST['n'] ) ? intval( $_REQUEST['n'] ) : $per_page;
 		$this->type = $type;
 		$this->search_terms = $search_terms;
+		$this->forum_id = $forum_id;
 
 		switch ( $type ) {
 			case 'newest': default:
@@ -253,7 +256,7 @@ function bp_the_topic_text() {
 		global $forum_template;
 
 		$post = bb_get_first_post( (int)$forum_template->topic->topic_id, false );
-		return apply_filters( 'bp_get_the_topic_text', $post->post_text );
+		return apply_filters( 'bp_get_the_topic_text', attribute_escape( $post->post_text ) );
 	}
 
 function bp_the_topic_poster_id() {
@@ -463,7 +466,7 @@ function bp_the_topic_total_posts() {
 	function bp_get_the_topic_total_posts() {
 		global $forum_template;
 
-		return $forum_template->topic->topic_posts;
+		return apply_filters( 'bp_get_the_topic_total_posts', $forum_template->topic->topic_posts );
 	}
 
 function bp_the_topic_tag_count() {
@@ -588,7 +591,7 @@ function bp_the_topic_css_class() {
 		if ( 0 == (int)$forum_template->topic->topic_open )
 			$class .= ' closed';
 
-		return trim( $class );
+		return apply_filters( 'bp_get_the_topic_css_class', trim( $class ) );
 	}
 
 function bp_my_forum_topics_link() {
@@ -663,15 +666,16 @@ function bp_forum_pagination() {
 function bp_forum_pagination_count() {
 	global $bp, $forum_template;
 
-	$from_num = bp_core_number_format( intval( ( $forum_template->pag_page - 1 ) * $forum_template->pag_num ) + 1 );
-	$to_num = bp_core_number_format( ( $from_num + ( $forum_template->pag_num - 1  ) > $forum_template->total_topic_count ) ? $forum_template->total_topic_count : $from_num + ( $forum_template->pag_num - 1 ) );
+	$start_num = intval( ( $forum_template->pag_page - 1 ) * $forum_template->pag_num ) + 1;
+	$from_num = bp_core_number_format( $start_num );
+	$to_num = bp_core_number_format( ( $start_num + ( $forum_template->pag_num - 1  ) > $forum_template->total_topic_count ) ? $forum_template->total_topic_count : $start_num + ( $forum_template->pag_num - 1 ) );
 	$total = bp_core_number_format( $forum_template->total_topic_count );
 
 	$pag_filter = false;
 	if ( 'tags' == $forum_template->type && !empty( $forum_template->search_terms ) )
 		$pag_filter = sprintf( __( ' matching tag "%s"', 'buddypress' ), $forum_template->search_terms );
 
-	echo apply_filters( 'bp_forum_pagination_count', sprintf( __( 'Viewing topic %s to %s (%s total topics%s)', 'buddypress' ), $from_num, $to_num, $total, $pag_filter ) );
+	echo apply_filters( 'bp_forum_pagination_count', sprintf( __( 'Viewing topic %1$s to %2$s (%3$s total topics%4$s)', 'buddypress' ), $from_num, $to_num, $total, $pag_filter ) );
 ?>
 <span class="ajax-loader"></span>
 <?php
@@ -693,6 +697,7 @@ class BP_Forums_Template_Topic {
 	var $posts;
 	var $post;
 
+	var $forum_id;
 	var $topic_id;
 	var $topic;
 
@@ -716,6 +721,7 @@ class BP_Forums_Template_Topic {
 
 		$this->topic_id = $topic_id;
 		$forum_template->topic = (object) bp_forums_get_topic_details( $this->topic_id );
+		$this->forum_id = $forum_template->topic->forum_id;
 
 		$this->posts = bp_forums_get_topic_posts( array( 'topic_id' => $this->topic_id, 'page' => $this->pag_page, 'per_page' => $this->pag_num ) );
 
@@ -811,10 +817,16 @@ function bp_has_forum_topic_posts( $args = '' ) {
 	if ( !$topic_id && $bp->current_component == $bp->groups->slug && 'forum' == $bp->current_action && 'topic' == $bp->action_variables[0] )
 		$topic_id = bp_forums_get_topic_id_from_slug( $bp->action_variables[1] );
 
-	if ( is_numeric( $topic_id ) )
+	if ( is_numeric( $topic_id ) ) {
 		$topic_template = new BP_Forums_Template_Topic( $topic_id, $per_page, $max );
-	else
+
+		// Current topic forum_id needs to match current_group forum_id
+		if ( $bp->current_component == $bp->groups->slug && $topic_template->forum_id != groups_get_groupmeta( $bp->groups->current_group->id, 'forum_id' ) )
+			return false;
+
+	} else {
 		return false;
+	}
 
 	return apply_filters( 'bp_has_topic_posts', $topic_template->has_posts(), &$topic_template );
 }
@@ -845,6 +857,27 @@ function bp_the_topic_post_content() {
 		global $topic_template;
 
 		return apply_filters( 'bp_get_the_topic_post_content', stripslashes( $topic_template->post->post_text ) );
+	}
+
+function bp_the_topic_post_css_class() {
+	echo bp_get_the_topic_post_css_class();
+}
+
+	function bp_get_the_topic_post_css_class() {
+		global $topic_template;
+
+		$class = false;
+
+		if ( $topic_template->current_post % 2 == 1 )
+			$class .= 'alt';
+
+		if ( 1 == (int)$topic_template->post->post_status )
+			$class .= ' deleted';
+
+		if ( 0 == (int)$topic_template->post->post_status )
+			$class .= ' open';
+
+		return apply_filters( 'bp_get_the_topic_post_css_class', trim( $class ) );
 	}
 
 function bp_the_topic_post_poster_avatar( $args = '' ) {
@@ -937,7 +970,7 @@ function bp_the_topic_post_edit_text() {
 		global $bp;
 
 		$post = bp_forums_get_post( $bp->action_variables[4] );
-		return attribute_escape( $post->post_text );
+		return apply_filters( 'bp_get_the_topic_post_edit_text', attribute_escape( $post->post_text ) );
 	}
 
 function bp_the_topic_pagination() {
@@ -952,10 +985,12 @@ function bp_the_topic_pagination() {
 function bp_the_topic_pagination_count() {
 	global $bp, $topic_template;
 
-	$from_num = intval( ( $topic_template->pag_page - 1 ) * $topic_template->pag_num ) + 1;
-	$to_num = ( $from_num + ( $topic_template->pag_num - 1  ) > $topic_template->total_post_count ) ? $topic_template->total_post_count : $from_num + ( $topic_template->pag_num - 1 );
+	$start_num = intval( ( $topic_template->pag_page - 1 ) * $topic_template->pag_num ) + 1;
+	$from_num = bp_core_number_format( $start_num );
+	$to_num = bp_core_number_format( ( $start_num + ( $topic_template->pag_num - 1  ) > $topic_template->total_post_count ) ? $topic_template->total_post_count : $start_num + ( $topic_template->pag_num - 1 ) );
+	$total = bp_core_number_format( $topic_template->total_post_count );
 
-	echo apply_filters( 'bp_the_topic_pagination_count', sprintf( __( 'Viewing post %d to %d (%d total posts)', 'buddypress' ), $from_num, $to_num, $topic_template->total_post_count ) );
+	echo apply_filters( 'bp_the_topic_pagination_count', sprintf( __( 'Viewing post %1$s to %2$s (%3$s total posts)', 'buddypress' ), $from_num, $to_num, $total ) );
 ?>
 	<span class="ajax-loader"></span>
 <?php

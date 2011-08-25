@@ -165,7 +165,7 @@ function bp_core_setup_globals() {
 	   their own profile and wants to delete something, is_item_admin is used. This is a
 	   generic variable so it can be used by other components. It can also be modified, so when viewing a group
 	   'is_item_admin' would be 1 if they are a group admin, 0 if they are not. */
-	$bp->is_item_admin = bp_is_my_profile();
+	$bp->is_item_admin = bp_user_has_access();
 
 	/* Used to determine if the logged in user is a moderator for the current content. */
 	$bp->is_item_mod = false;
@@ -414,7 +414,7 @@ add_action( 'wp', 'bp_core_action_directory_members', 2 );
  * @global $bp The global BuddyPress settings variable created in bp_core_setup_globals()
  */
 function bp_core_action_set_spammer_status() {
-	global $bp, $wpdb;
+	global $bp, $wpdb, $wp_version;
 
 	if ( !is_site_admin() || bp_is_my_profile() || !$bp->displayed_user->id )
 		return false;
@@ -424,8 +424,12 @@ function bp_core_action_set_spammer_status() {
 		check_admin_referer( 'mark-unmark-spammer' );
 
 		/* Get the functions file */
-		if ( file_exists( ABSPATH . 'wp-admin/includes/mu.php' ) && bp_core_is_multisite() )
-			require( ABSPATH . 'wp-admin/includes/mu.php' );
+		if ( bp_core_is_multisite() ) {
+			if ( $wp_version >= '3.0' )
+				require_once( ABSPATH . '/wp-admin/includes/ms.php' );
+			else
+				require_once( ABSPATH . '/wp-admin/includes/mu.php' );
+		}
 
 		if ( 'mark-spammer' == $bp->current_action )
 			$is_spam = 1;
@@ -496,7 +500,7 @@ function bp_core_action_delete_user() {
 			$errors = true;
 		}
 
-		do_action( 'bp_core_action_set_spammer_status', $errors );
+		do_action( 'bp_core_action_delete_user', $errors );
 
 		if ( $errors )
 			bp_core_redirect( $bp->displayed_user->domain );
@@ -531,6 +535,7 @@ function bp_core_get_users( $args = '' ) {
 		'user_id' => false, // Pass a user_id to limit to only friend connections for this user
 		'search_terms' => false, // Limit to users that match these search terms
 
+		'include' => false, // Pass comma separated list of user_ids to limit to only these users
 		'per_page' => 20, // The number of results to return per page
 		'page' => 1, // The page to return if limiting per page
 		'populate_extras' => true, // Fetch the last active, where the user is a friend, total friend count, latest update
@@ -539,7 +544,7 @@ function bp_core_get_users( $args = '' ) {
 	$params = wp_parse_args( $args, $defaults );
 	extract( $params, EXTR_SKIP );
 
-	return apply_filters( 'bp_core_get_users', BP_Core_User::get_users( $type, $per_page, $page, $user_id, $search_terms, $populate_extras ), &$params );
+	return apply_filters( 'bp_core_get_users', BP_Core_User::get_users( $type, $per_page, $page, $user_id, $include, $search_terms, $populate_extras ), &$params );
 }
 
 /**
@@ -609,9 +614,9 @@ function bp_core_get_root_domain() {
 	global $current_blog;
 
 	if ( defined( 'BP_ENABLE_MULTIBLOG' ) )
-		$domain = get_blog_option( $current_blog->blog_id, 'siteurl' );
+		$domain = get_blog_option( $current_blog->blog_id, 'home' );
 	else
-		$domain = get_blog_option( BP_ROOT_BLOG, 'siteurl' );
+		$domain = get_blog_option( BP_ROOT_BLOG, 'home' );
 
 	return apply_filters( 'bp_core_get_root_domain', $domain );
 }
@@ -681,7 +686,7 @@ function bp_core_new_nav_item( $args = '' ) {
 	 * the logged in user is not the displayed user
 	 * looking at their own profile, don't create the nav item.
 	 */
-	if ( !$show_for_displayed_user && !bp_is_my_profile() )
+	if ( !$show_for_displayed_user && !bp_user_has_access() )
 		return false;
 
 	/***
@@ -1187,7 +1192,7 @@ function bp_core_get_user_displayname( $user_id_or_username ) {
 			wp_cache_set( 'bp_user_fullname_' . $user_id, $fullname, 'bp' );
 	}
 
-	return apply_filters( 'bp_core_get_user_displayname', $fullname );
+	return apply_filters( 'bp_core_get_user_displayname', $fullname, $user_id );
 }
 add_filter( 'bp_core_get_user_displayname', 'strip_tags', 1 );
 add_filter( 'bp_core_get_user_displayname', 'trim' );
@@ -1351,7 +1356,7 @@ function bp_core_setup_message() {
 	@setcookie( 'bp-message', false, time() - 1000, COOKIEPATH );
 	@setcookie( 'bp-message-type', false, time() - 1000, COOKIEPATH );
 }
-add_action( 'wp', 'bp_core_setup_message' );
+add_action( 'wp', 'bp_core_setup_message', 2 );
 
 /**
  * bp_core_render_message()
@@ -1514,7 +1519,7 @@ function bp_core_number_format( $number, $decimals = false ) {
 	if ( empty( $number ) )
 		return $number;
 
-	return apply_filters( 'bp_core_bp_core_number_format', number_format( $number, $decimals ), $number, $decimals );
+	return apply_filters( 'bp_core_number_format', number_format( $number, $decimals ), $number, $decimals );
 }
 
 /**
@@ -1692,12 +1697,13 @@ function bp_core_add_illegal_names() {
  *
  * @package BuddyPress Core
  * @global $bp The global BuddyPress settings variable created in bp_core_setup_globals()
- * @uses check_admin_referer() Checks for a valid security nonce.
  * @uses is_site_admin() Checks to see if the user is a site administrator.
- * @uses wpmu_delete_user() Deletes a user from the system.
+ * @uses wpmu_delete_user() Deletes a user from the system on multisite installs.
+ * @uses wp_delete_user() Deletes a user from the system on singlesite installs.
+ * @uses get_site_option Checks if account deletion is allowed
  */
 function bp_core_delete_account( $user_id = false ) {
-	global $bp, $wpdb;
+	global $bp, $wpdb, $wp_version;
 
 	if ( !$user_id )
 		$user_id = $bp->loggedin_user->id;
@@ -1706,17 +1712,23 @@ function bp_core_delete_account( $user_id = false ) {
 	if ( (int)get_site_option( 'bp-disable-account-deletion' ) )
 		return false;
 
-	/* Site admins should not be allowed to be deleted */
-	if ( bp_core_is_multisite() && is_site_admin( bp_core_get_username( $user_id ) ) )
-		return false;
+	/* Specifically handle multi-site environment */
+	if ( bp_core_is_multisite() ) {
+		/* Site admins cannot be deleted */
+		if ( is_site_admin( bp_core_get_username( $user_id ) ) )
+			return false;
 
-	if ( bp_core_is_multisite() && function_exists('wpmu_delete_user') ) {
-		require_once( ABSPATH . '/wp-admin/includes/mu.php' );
+		if ( $wp_version >= '3.0' )
+			require_once( ABSPATH . '/wp-admin/includes/ms.php' );
+		else
+			require_once( ABSPATH . '/wp-admin/includes/mu.php' );
+
 		require_once( ABSPATH . '/wp-admin/includes/user.php' );
 
 		return wpmu_delete_user( $user_id );
 	}
 
+	/* Single site user deletion */
 	require_once( ABSPATH . '/wp-admin/includes/user.php' );
 	return wp_delete_user( $user_id );
 }
@@ -1921,9 +1933,9 @@ function bp_core_remove_data( $user_id ) {
 	/* Flush the cache to remove the user from all cached objects */
 	wp_cache_flush();
 }
-add_action( 'wpmu_delete_user', 'bp_core_remove_data', 1 );
-add_action( 'delete_user', 'bp_core_remove_data', 1 );
-add_action( 'make_spam_user', 'bp_core_remove_data', 1 );
+add_action( 'wpmu_delete_user', 'bp_core_remove_data' );
+add_action( 'delete_user', 'bp_core_remove_data' );
+add_action( 'make_spam_user', 'bp_core_remove_data' );
 
 /**
  * bp_load_buddypress_textdomain()
@@ -2000,6 +2012,36 @@ function bp_core_activation_notice() {
 	}
 }
 add_action( 'admin_notices', 'bp_core_activation_notice' );
+
+/**
+ * bp_core_activate_site_options()
+ *
+ * When switching from single to multisite we need to copy blog options to
+ * site options.
+ *
+ * @package BuddyPress Core
+ */
+function bp_core_activate_site_options( $keys = array() ) {
+	global $bp;
+
+	if ( !empty( $keys ) && is_array( $keys ) ) {
+		$errors = false;
+
+		foreach ( $keys as $key => $default ) {
+			if ( empty( $bp->site_options[ $key ] ) ) {
+				$bp->site_options[ $key ] = get_blog_option( BP_ROOT_BLOG, $key, $default );
+
+				if ( !update_site_option( $key, $bp->site_options[ $key ] ) )
+					$errors = true;
+			}
+		}
+
+		if ( empty( $errors ) )
+			return true;
+	}
+
+	return false;
+}
 
 /********************************************************************************
  * Custom Actions

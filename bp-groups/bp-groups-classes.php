@@ -128,7 +128,7 @@ Class BP_Groups_Group {
 		$user_ids = implode( ',', (array)$user_ids );
 
 		/* Modify group count usermeta for members */
-		$wpdb->query( $wpdb->prepare( "UPDATE {$bp->groups->table_name_groupmeta} SET meta_value = meta_value - 1 WHERE meta_key = 'total_group_count' AND user_id IN ( {$user_ids} )" ) );
+		$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->usermeta} SET meta_value = meta_value - 1 WHERE meta_key = 'total_group_count' AND user_id IN ( {$user_ids} )" ) );
 
 		/* Now delete all group member entries */
 		BP_Groups_Member::delete_all( $this->id );
@@ -907,6 +907,15 @@ Class BP_Groups_Member {
 			return false;
 
 		return $wpdb->query( $wpdb->prepare( "DELETE FROM {$bp->groups->table_name_members} WHERE user_id = %d AND group_id = %d AND is_confirmed = 0 AND inviter_id != 0 AND invite_sent = 1", $user_id, $group_id ) );
+	}
+
+	function delete_request( $user_id, $group_id ) {
+		global $wpdb, $bp;
+
+		if ( !$user_id )
+			return false;
+
+ 		return $wpdb->query( $wpdb->prepare( "DELETE FROM {$bp->groups->table_name_members} WHERE user_id = %d AND group_id = %d AND is_confirmed = 0 AND inviter_id = 0 AND invite_sent = 0", $user_id, $group_id ) );
 	}
 
 	function check_is_admin( $user_id, $group_id ) {
