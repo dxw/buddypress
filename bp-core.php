@@ -997,8 +997,30 @@ add_action( 'wp', 'bp_core_get_random_member' );
 function bp_core_get_userid( $username ) {
 	global $wpdb;
 
-	if ( !empty( $username ) )
-		return apply_filters( 'bp_core_get_userid', $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM " . CUSTOM_USER_TABLE . " WHERE user_login = %s", $username ) ) );
+	if ( empty( $username ) )
+		return false;
+
+	return apply_filters( 'bp_core_get_userid', $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM " . CUSTOM_USER_TABLE . " WHERE user_login = %s", $username ) ) );
+}
+
+/**
+ * bp_core_get_userid_from_nicename()
+ *
+ * Returns the user_id for a user based on their user_nicename.
+ *
+ * @package BuddyPress Core
+ * @param $username str Username to check.
+ * @global $wpdb WordPress DB access object.
+ * @return false on no match
+ * @return int the user ID of the matched user.
+ */
+function bp_core_get_userid_from_nicename( $user_nicename ) {
+	global $wpdb;
+
+	if ( empty( $user_nicename ) )
+		return false;
+
+	return apply_filters( 'bp_core_get_userid_from_nicename', $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM " . CUSTOM_USER_TABLE . " WHERE user_nicename = %s", $user_nicename ) ) );
 }
 
 /**
@@ -1539,13 +1561,15 @@ function bp_core_get_site_path() {
 			unset( $site_path[1] );
 			unset( $site_path[2] );
 
-			$site_path = '/' . implode( '/', $site_path ) . '/';
+			if ( !count( $site_path ) )
+				$site_path = '/';
+			else
+				$site_path = '/' . implode( '/', $site_path ) . '/';
 		}
 	}
 
 	return apply_filters( 'bp_core_get_site_path', $site_path );
 }
-
 /**
  * bp_core_get_site_options()
  *
@@ -1803,7 +1827,7 @@ function bp_core_print_generation_time() {
 	global $wpdb;
 	?>
 
-<!-- Generated in <?php timer_stop(1); ?> seconds. (<?php echo get_num_queries(); ?> q) -->
+<!-- Generated in <?php timer_stop(1); ?> seconds. -->
 
 	<?php
 }
@@ -1874,7 +1898,7 @@ function bp_core_boot_spammer( $auth_obj, $username ) {
 
 	$user = get_userdatabylogin( $username );
 
-	if ( (int)$user->spam )
+	if ( ( bp_core_is_multisite() && (int)$user->spam ) || 1 == (int)$user->user_status )
 		bp_core_redirect( $bp->root_domain );
 	else
 		return $auth_obj;
