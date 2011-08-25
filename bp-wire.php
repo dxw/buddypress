@@ -5,86 +5,87 @@ if ( !defined( 'BP_WIRE_SLUG' ) )
 	define ( 'BP_WIRE_SLUG', 'wire' );
 
 require ( BP_PLUGIN_DIR . '/bp-wire/bp-wire-classes.php' );
-require ( BP_PLUGIN_DIR . '/bp-wire/bp-wire-ajax.php' );
 require ( BP_PLUGIN_DIR . '/bp-wire/bp-wire-templatetags.php' );
-require ( BP_PLUGIN_DIR . '/bp-wire/bp-wire-cssjs.php' );
 require ( BP_PLUGIN_DIR . '/bp-wire/bp-wire-filters.php' );
 
-/**************************************************************************
- bp_wire_setup_globals()
- 
- Set up and add all global variables for this component, and add them to 
- the $bp global variable array.
- **************************************************************************/
-
+/* Include deprecated functions if settings allow */
+if ( !defined( 'BP_IGNORE_DEPRECATED' ) )
+	require ( BP_PLUGIN_DIR . '/bp-wire/deprecated/bp-wire-deprecated.php' );	
+	
 function bp_wire_install() {
 	// Tables are installed on a per component basis, where needed.
 }
 
 function bp_wire_setup_globals() {
 	global $bp, $wpdb;
-	
-	$bp->wire->image_base = BP_PLUGIN_URL . '/bp-wire/images';
-	$bp->wire->slug = BP_WIRE_SLUG;
 
-	$bp->version_numbers->wire = BP_WIRE_VERSION;
+	/* For internal identification */
+	$bp->wire->id = 'wire';
+	
+	$bp->wire->slug = BP_WIRE_SLUG;
+	
+	/* Register this in the active components array */
+	$bp->active_components[$bp->wire->slug] = $bp->wire->id;
+
+	do_action( 'bp_wire_setup_globals' );
 }
 add_action( 'plugins_loaded', 'bp_wire_setup_globals', 5 );	
-add_action( 'admin_menu', 'bp_wire_setup_globals', 1 );
-
-/**************************************************************************
- bp_wire_setup_nav()
- 
- Set up front end navigation.
- **************************************************************************/
+add_action( 'admin_menu', 'bp_wire_setup_globals', 2 );
 
 function bp_wire_setup_nav() {
 	global $bp;
 
+	/* Profile wire's will only work if xprofile is enabled */
+	if ( !function_exists( 'xprofile_install' ) )
+		return false;
+		
 	/* Add 'Wire' to the main navigation */
-	bp_core_add_nav_item( __('Wire', 'buddypress'), $bp->wire->slug );
-	bp_core_add_nav_default( $bp->wire->slug, 'bp_wire_screen_latest', 'all-posts' );
+	bp_core_new_nav_item( array( 'name' => __('Wire', 'buddypress'), 'slug' => $bp->wire->slug, 'position' => 40, 'screen_function' => 'bp_wire_screen_latest', 'default_subnav_slug' => 'all-posts', 'item_css_id' => $bp->wire->id ) );
 
-	/* Add the subnav items to the wire nav */
- 	bp_core_add_subnav_item( $bp->wire->slug, 'all-posts', __('All Posts', 'buddypress'), $bp->loggedin_user->domain . $bp->wire->slug . '/', 'bp_wire_screen_latest' );
+	$wire_link = $bp->loggedin_user->domain . $bp->wire->slug . '/';
 	
+	/* Add the subnav items to the wire nav */
+	bp_core_new_subnav_item( array( 'name' => __( 'All Posts', 'buddypress' ), 'slug' => 'all-posts', 'parent_url' => $wire_link, 'parent_slug' => $bp->wire->slug, 'screen_function' => 'bp_wire_screen_latest', 'position' => 10 ) );
+
 	if ( $bp->current_component == $bp->wire->slug ) {
 		if ( bp_is_home() ) {
 			$bp->bp_options_title = __('My Wire', 'buddypress');
 		} else {
-			$bp->bp_options_avatar = bp_core_get_avatar( $bp->displayed_user->id, 1 );
+			$bp->bp_options_avatar = bp_core_fetch_avatar( array( 'item_id' => $bp->displayed_user->id, 'type' => 'thumb' ) );
 			$bp->bp_options_title = $bp->displayed_user->fullname; 
 		}
 	}
 	
 	do_action( 'bp_wire_setup_nav' );
 }
-add_action( 'wp', 'bp_wire_setup_nav', 2 );
-add_action( 'admin_menu', 'bp_wire_setup_nav', 2 );
+add_action( 'plugins_loaded', 'bp_wire_setup_nav' );
+add_action( 'admin_menu', 'bp_wire_setup_nav' );
 
-/***** Screens **********/
+
+/********************************************************************************
+ * Screen Functions
+ *
+ * Screen functions are the controllers of BuddyPress. They will execute when their
+ * specific URL is caught. They will first save or manipulate data using business
+ * functions, then pass on the user to a template file.
+ */
 
 function bp_wire_screen_latest() {
 	do_action( 'bp_wire_screen_latest' );
 	bp_core_load_template( apply_filters( 'bp_wire_template_latest', 'wire/latest' ) );	
 }
 
-function bp_wire_record_activity( $args = true ) {
-	if ( function_exists('bp_activity_record') ) {
-		extract($args);
 
-		bp_activity_record( $item_id, $component_name, $component_action, $is_private, $secondary_item_id, $user_id, $secondary_user_id );
-	}
-}
+/********************************************************************************
+ * Business Functions
+ *
+ * Business functions are where all the magic happens in BuddyPress. They will
+ * handle the actual saving or manipulation of information. Usually they will
+ * hand off to a database class for data access, then return
+ * true or false on success or failure.
+ */
 
-function bp_wire_delete_activity( $args = true ) {
-	if ( function_exists('bp_activity_delete') ) {
-		extract($args);
-		bp_activity_delete( $item_id, $component_name, $component_action, $user_id, $secondary_item_id );
-	}
-}
-
-function bp_wire_new_post( $item_id, $message, $component_name, $private_post = false, $table_name = null ) {
+function bp_wire_new_post( $item_id, $message, $component_name, $deprecated = false, $table_name = null ) {
 	global $bp;
 	
 	if ( empty($message) || !is_user_logged_in() )
@@ -97,23 +98,14 @@ function bp_wire_new_post( $item_id, $message, $component_name, $private_post = 
 	$wire_post->item_id = $item_id;
 	$wire_post->user_id = $bp->loggedin_user->id;
 	$wire_post->date_posted = time();
-
-	$allowed_tags = apply_filters( 'bp_wire_post_allowed_tags', '<a><b><strong><i><em><img>' );
-		
-	$message = strip_tags( $message, $allowed_tags );
-	$wire_post->content = apply_filters( 'bp_wire_post_content', $message );
+	$wire_post->content = $message;
 	
 	if ( !$wire_post->save() )
 		return false;
 	
-	if ( !$private_post ) {
-		// Record in the activity streams
-		bp_wire_record_activity( array( 'item_id' => $wire_post->id, 'component_name' => $component_name, 'component_action' => 'new_wire_post', 'is_private' => 0 ) );
-	}
-	
 	do_action( 'bp_wire_post_posted', $wire_post->id, $wire_post->item_id, $wire_post->user_id );
 	
-	return $wire_post->id;
+	return $wire_post;
 }
 
 function bp_wire_delete_post( $wire_post_id, $component_name, $table_name = null ) {
@@ -137,10 +129,7 @@ function bp_wire_delete_post( $wire_post_id, $component_name, $table_name = null
 	if ( !$wire_post->delete() )
 		return false;
 
-	// Delete activity stream items
-	bp_wire_delete_activity( array( 'user_id' => $wire_post->user_id, 'item_id' => $wire_post->id, 'component_name' => $component_name, 'component_action' => 'new_wire_post' ) );	
-
-	do_action( 'bp_wire_post_deleted', $wire_post->id, $wire_post->item_id, $wire_post->user_id );
+	do_action( 'bp_wire_post_deleted', $wire_post->id, $wire_post->item_id, $wire_post->user_id, $component_name );
 	
 	return true;
 }

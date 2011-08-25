@@ -8,8 +8,7 @@ add_action( 'plugins_loaded', 'bp_blogs_register_widgets' );
 
 class BP_Blogs_Recent_Posts_Widget extends WP_Widget {
 	function bp_blogs_recent_posts_widget() {
-		parent::WP_Widget( false, $name = 'Recent Site Wide Posts' );
-		wp_enqueue_style( 'bp-blogs-widget-posts-css', BP_PLUGIN_URL . '/bp-blogs/css/widget-blogs.css' );		
+		parent::WP_Widget( false, $name = __( 'Recent Site Wide Posts', 'buddypress' ) );
 	}
 
 	function widget($args, $instance) {
@@ -22,6 +21,10 @@ class BP_Blogs_Recent_Posts_Widget extends WP_Widget {
 		   . $widget_name 
 		   . $after_title; ?>
 	
+		<?php
+		if ( empty( $instance['max_posts'] ) || !$instance['max_posts'] )
+			$instance['max_posts'] = 10; ?>
+		
 		<?php $posts = bp_blogs_get_latest_posts( null, $instance['max_posts'] ) ?>
 		<?php $counter = 0; ?>
 		
@@ -33,7 +36,7 @@ class BP_Blogs_Recent_Posts_Widget extends WP_Widget {
 				<?php foreach ( $posts as $post ) : ?>
 					<li>
 						<div class="item-avatar">
-							<a href="<?php echo bp_post_get_permalink( $post, $post->blog_id ) ?>" title="<?php echo apply_filters( 'the_title', $post->post_title ) ?>"><?php echo bp_core_get_avatar( $post->post_author, 1 ) ?></a>
+							<a href="<?php echo bp_post_get_permalink( $post, $post->blog_id ) ?>" title="<?php echo apply_filters( 'the_title', $post->post_title ) ?>"><?php echo bp_core_fetch_avatar( array( 'item_id' => $post->post_author, 'type' => 'thumb' ) ) ?></a>
 						</div>
 
 						<div class="item">

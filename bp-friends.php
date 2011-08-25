@@ -1,21 +1,17 @@
 <?php
 
-define ( 'BP_FRIENDS_DB_VERSION', '1300' );
+define ( 'BP_FRIENDS_DB_VERSION', '1800' );
 
 /* Define the slug for the component */
 if ( !defined( 'BP_FRIENDS_SLUG' ) )
 	define ( 'BP_FRIENDS_SLUG', 'friends' );
 
 require ( BP_PLUGIN_DIR . '/bp-friends/bp-friends-classes.php' );
-require ( BP_PLUGIN_DIR . '/bp-friends/bp-friends-ajax.php' );
-require ( BP_PLUGIN_DIR . '/bp-friends/bp-friends-cssjs.php' );
 require ( BP_PLUGIN_DIR . '/bp-friends/bp-friends-templatetags.php' );
 
-/**************************************************************************
- friends_install()
- 
- Sets up the database tables ready for use on a site installation.
- **************************************************************************/
+/* Include deprecated functions if settings allow */
+if ( !defined( 'BP_IGNORE_DEPRECATED' ) )
+	require ( BP_PLUGIN_DIR . '/bp-friends/deprecated/bp-friends-deprecated.php' );
 
 function friends_install() {
 	global $wpdb, $bp;
@@ -39,29 +35,24 @@ function friends_install() {
 	
 	update_site_option( 'bp-friends-db-version', BP_FRIENDS_DB_VERSION );
 }
-	
-	
-/**************************************************************************
- friends_setup_globals()
- 
- Set up and add all global variables for this component, and add them to 
- the $bp global variable array.
- **************************************************************************/
 
 function friends_setup_globals() {
 	global $bp, $wpdb;
-	
+
+	/* For internal identification */
+	$bp->friends->id = 'friends';
+		
 	$bp->friends->table_name = $wpdb->base_prefix . 'bp_friends';
-	$bp->friends->image_base = BP_PLUGIN_URL . '/bp-friends/images';
-	$bp->friends->format_activity_function = 'friends_format_activity';
 	$bp->friends->format_notification_function = 'friends_format_notifications';
-
 	$bp->friends->slug = BP_FRIENDS_SLUG;
+	
+	/* Register this in the active components array */
+	$bp->active_components[$bp->friends->slug] = $bp->friends->id;
 
-	$bp->version_numbers->friends = BP_FRIENDS_VERSION;
+	do_action( 'friends_setup_globals' );
 }
 add_action( 'plugins_loaded', 'friends_setup_globals', 5 );	
-add_action( 'admin_menu', 'friends_setup_globals', 1 );
+add_action( 'admin_menu', 'friends_setup_globals', 2 );
 
 function friends_check_installed() {	
 	global $wpdb, $bp;
@@ -75,30 +66,23 @@ function friends_check_installed() {
 }
 add_action( 'admin_menu', 'friends_check_installed' );
 
-/**************************************************************************
- friends_setup_nav()
- 
- Set up front end navigation.
- **************************************************************************/
-
 function friends_setup_nav() {
 	global $bp;
 	
 	/* Add 'Friends' to the main navigation */
-	bp_core_add_nav_item( __('Friends', 'buddypress'), $bp->friends->slug );
-	bp_core_add_nav_default( $bp->friends->slug, 'friends_screen_my_friends', 'my-friends' );
+	bp_core_new_nav_item( array( 'name' => __('Friends', 'buddypress'), 'slug' => $bp->friends->slug, 'position' => 60, 'screen_function' => 'friends_screen_my_friends', 'default_subnav_slug' => 'my-friends', 'item_css_id' => $bp->friends->id ) );
 	
 	$friends_link = $bp->loggedin_user->domain . $bp->friends->slug . '/';
 	
 	/* Add the subnav items to the friends nav item */
-	bp_core_add_subnav_item( $bp->friends->slug, 'my-friends', __( 'My Friends', 'buddypress' ), $friends_link, 'friends_screen_my_friends', 'friends-my-friends' );
-	bp_core_add_subnav_item( $bp->friends->slug, 'requests', __( 'Requests', 'buddypress' ), $friends_link, 'friends_screen_requests', false, bp_is_home() );
+	bp_core_new_subnav_item( array( 'name' => __( 'My Friends', 'buddypress' ), 'slug' => 'my-friends', 'parent_url' => $friends_link, 'parent_slug' => $bp->friends->slug, 'screen_function' => 'friends_screen_my_friends', 'position' => 10, 'item_css_id' => 'friends-my-friends' ) );
+	bp_core_new_subnav_item( array( 'name' => __( 'Requests', 'buddypress' ), 'slug' => 'requests', 'parent_url' => $friends_link, 'parent_slug' => $bp->friends->slug, 'screen_function' => 'friends_screen_requests', 'position' => 20, 'user_has_access' => bp_is_home() ) );
 	
 	if ( $bp->current_component == $bp->friends->slug ) {
 		if ( bp_is_home() ) {
 			$bp->bp_options_title = __( 'My Friends', 'buddypress' );
 		} else {
-			$bp->bp_options_avatar = bp_core_get_avatar( $bp->displayed_user->id, 1 );
+			$bp->bp_options_avatar = bp_core_fetch_avatar( array( 'item_id' => $bp->displayed_user->id, 'type' => 'thumb' ) );
 			$bp->bp_options_title = $bp->displayed_user->fullname; 
 		}
 	}
@@ -108,7 +92,14 @@ function friends_setup_nav() {
 add_action( 'wp', 'friends_setup_nav', 2 );
 add_action( 'admin_menu', 'friends_setup_nav', 2 );
 
-/***** Screens **********/
+
+/********************************************************************************
+ * Screen Functions
+ *
+ * Screen functions are the controllers of BuddyPress. They will execute when their
+ * specific URL is caught. They will first save or manipulate data using business
+ * functions, then pass on the user to a template file.
+ */
 
 function friends_screen_my_friends() {
 	global $bp;
@@ -188,7 +179,13 @@ function friends_screen_notification_settings() {
 add_action( 'bp_notification_settings', 'friends_screen_notification_settings' );
 
 
-/***** Actions **********/
+/********************************************************************************
+ * Action Functions
+ *
+ * Action functions are exactly the same as screen functions, however they do not
+ * have a template screen associated with them. Usually they will send the user
+ * back to the default screen after execution.
+ */
 
 function friends_action_add_friend() {
 	global $bp;
@@ -222,7 +219,7 @@ function friends_action_add_friend() {
 		bp_core_add_message( __( 'You already have a pending friendship request with this user', 'buddypress' ), 'error' );		
 	}
 	
-	bp_core_redirect( $_SERVER['HTTP_REFERER'] );
+	bp_core_redirect( wp_get_referer() );
 	
 	return false;
 }
@@ -260,79 +257,62 @@ function friends_action_remove_friend() {
 		bp_core_add_message( __( 'You have a pending friendship request with this user', 'buddypress' ), 'error' );		
 	}
 	
-	bp_core_redirect( $_SERVER['HTTP_REFERER'] );
+	bp_core_redirect( wp_get_referer() );
 	
 	return false;
 }
 add_action( 'init', 'friends_action_remove_friend' );
 
 
-/**************************************************************************
- friends_record_activity()
- 
- Records activity for the logged in user within the friends component so that
- it will show in the users activity stream (if installed)
- **************************************************************************/
+/********************************************************************************
+ * Activity & Notification Functions
+ *
+ * These functions handle the recording, deleting and formatting of activity and
+ * notifications for the user and for this specific component.
+ */
 
-function friends_record_activity( $args ) {
-	if ( function_exists('bp_activity_record') ) {
-		extract( (array)$args );
-		bp_activity_record( $item_id, $component_name, $component_action, $is_private, $secondary_item_id, $user_id, $secondary_user_id );
-	}
-}
-add_action( 'friends_friendship_accepted', 'friends_record_activity' );
-
-function friends_delete_activity( $args ) {
-	if ( function_exists('bp_activity_delete') ) {
-		extract( (array)$args );
-		bp_activity_delete( $item_id, $component_name, $component_action, $user_id, $secondary_item_id );
-	}
-}
-
-/**************************************************************************
- friends_format_activity()
- 
- Selects and formats recorded friends component activity.
- Example: Selects the friend details for an added connection, then
-          formats it to read "Andy Peatling & John Smith are now friends"
- **************************************************************************/
-
-function friends_format_activity( $item_id, $user_id, $action, $secondary_item_id = false, $for_secondary_user = false ) {
+function friends_record_activity( $args = '' ) {
 	global $bp;
 	
-	switch( $action ) {
-		case 'friendship_accepted':
-			$friendship = new BP_Friends_Friendship( $item_id, false, false );
+	if ( !function_exists( 'bp_activity_add' ) )
+		return false;
 
-			if ( !$friendship->initiator_user_id || !$friendship->friend_user_id )
-				return false;
-			
-			if ( $for_secondary_user ) {
-				
-				$user_1 = bp_core_get_userlink( $friendship->initiator_user_id );
-				$user_2 = bp_core_get_userlink($friendship->friend_user_id, false, false, true);
-				
-				return array( 
-					'primary_link' => bp_core_get_userlink( $friendship->friend_user_id, false, true ),
-					'content' => apply_filters( 'bp_friends_friendship_accepted_activity', sprintf( __( '%s and %s are now friends', 'buddypress' ), $user_1, $user_2 ) . ' <span class="time-since">%s</span>', $user_1, $user_2 )
-				);				
-			} else {
-				
-				$user_1 = bp_core_get_userlink( $friendship->friend_user_id );
-				$user_2 = bp_core_get_userlink($friendship->initiator_user_id);
-				
-				return array( 
-					'primary_link' => bp_core_get_userlink( $friendship->friend_user_id, false, true ),
-					'content' => apply_filters( 'bp_friends_friendship_accepted_activity', sprintf( __( '%s and %s are now friends', 'buddypress' ), bp_core_get_userlink( $friendship->friend_user_id ), bp_core_get_userlink($friendship->initiator_user_id) ) . ' <span class="time-since">%s</span>', $user_1, $user_2 )
-				);			
-			}
-		break;
-	}
-	
-	do_action( 'friends_format_activity', $action, $item_id, $user_id, $action, $secondary_item_id, $for_secondary_user );
-	
-	return false;
+	$defaults = array(
+		'user_id' => $bp->loggedin_user->id,
+		'content' => false,
+		'primary_link' => false,
+		'component_name' => $bp->friends->id,
+		'component_action' => false,
+		'item_id' => false,
+		'secondary_item_id' => false,
+		'recorded_time' => time(),
+		'hide_sitewide' => false
+	);
+
+	$r = wp_parse_args( $args, $defaults );
+	extract( $r, EXTR_SKIP );	
+
+	return bp_activity_add( array( 'user_id' => $user_id, 'content' => $content, 'primary_link' => $primary_link, 'component_name' => $component_name, 'component_action' => $component_action, 'item_id' => $item_id, 'secondary_item_id' => $secondary_item_id, 'recorded_time' => $recorded_time, 'hide_sitewide' => $hide_sitewide ) );
 }
+
+function friends_delete_activity( $args ) {
+	if ( function_exists('bp_activity_delete_by_item_id') ) {
+		extract( (array)$args );
+		bp_activity_delete_by_item_id( array( 'item_id' => $item_id, 'component_name' => $bp->friends->id, 'component_action' => $component_action, 'user_id' => $user_id, 'secondary_item_id' => $secondary_item_id ) );
+	}
+}
+
+function friends_register_activity_actions() {
+	global $bp;
+	
+	if ( !function_exists( 'bp_activity_set_action' ) )
+		return false;
+
+	bp_activity_set_action( $bp->friends->id, 'friends_register_activity_action', __( 'New friendship created', 'buddypress' ) );
+
+	do_action( 'friends_register_activity_actions' );
+}
+add_action( 'plugins_loaded', 'friends_register_activity_actions' );
 
 function friends_format_notifications( $action, $item_id, $secondary_item_id, $total_items ) {
 	global $bp;
@@ -364,6 +344,16 @@ function friends_format_notifications( $action, $item_id, $secondary_item_id, $t
 	return false;
 }
 
+
+/********************************************************************************
+ * Business Functions
+ *
+ * Business functions are where all the magic happens in BuddyPress. They will
+ * handle the actual saving or manipulation of information. Usually they will
+ * hand off to a database class for data access, then return
+ * true or false on success or failure.
+ */
+
 function friends_check_user_has_friends( $user_id ) {
 	$friend_count = get_usermeta( $user_id, 'total_friend_count');
 
@@ -391,7 +381,7 @@ function friends_search_friends( $search_terms, $user_id, $pag_num = 10, $pag_pa
 function friends_get_friendship_requests( $user_id ) {
 	$fship_ids = friends_get_friendship_ids( $user_id, true );
 	
-	return array( 'requests' => $fship_ids, 'total' => count($requests) );
+	return array( 'requests' => $fship_ids, 'total' => count($fship_ids) );
 }
 
 function friends_get_recently_active( $user_id, $pag_num = false, $pag_page = false, $filter = false ) {
@@ -540,12 +530,6 @@ function friends_get_friend_count_for_user( $user_id ) {
 	return BP_Friends_Friendship::total_friend_count( $user_id );
 }
 
-/**************************************************************************
- friends_search_users()
- 
- Return an array of user objects based on the users search terms
-**************************************************************************/
-
 function friends_search_users( $search_terms, $user_id, $pag_num = false, $pag_page = false ) {
 	global $bp;
 
@@ -561,12 +545,6 @@ function friends_search_users( $search_terms, $user_id, $pag_num = false, $pag_p
 	return array( 'users' => $users, 'count' => BP_Friends_Friendship::search_users_count($search_terms) );
 }
 
-/**************************************************************************
- friends_check_friendship()
- 
- Check to see if the user is already a confirmed friend with this user.
-**************************************************************************/
-
 function friends_check_friendship( $user_id, $possible_friend_id ) {
 	global $bp;
 
@@ -575,12 +553,6 @@ function friends_check_friendship( $user_id, $possible_friend_id ) {
 	
 	return false;
 }
-
-/**************************************************************************
- friends_add_friend()
- 
- Create a new friend relationship
-**************************************************************************/
 
 function friends_add_friend( $initiator_userid, $friend_userid, $force_accept = false ) {
 	global $bp;
@@ -620,20 +592,14 @@ function friends_add_friend( $initiator_userid, $friend_userid, $force_accept = 
 	return false;
 }
 
-/**************************************************************************
- friends_remove_friend()
- 
- Remove a friend relationship
-**************************************************************************/
-
 function friends_remove_friend( $initiator_userid, $friend_userid ) {
 	global $bp;
 		
 	$friendship_id = BP_Friends_Friendship::get_friendship_id( $initiator_userid, $friend_userid );
 	$friendship = new BP_Friends_Friendship( $friendship_id );
 	
-	// Remove the activity stream items
-	friends_delete_activity( array( 'item_id' => $friendship_id, 'component_name' => $bp->friends->slug, 'component_action' => 'friendship_accepted', 'user_id' => $bp->displayed_user->id ) );
+	// Remove the activity stream item for the user who canceled the friendship
+	friends_delete_activity( array( 'item_id' => $friendship_id, 'component_action' => 'friendship_accepted', 'user_id' => $bp->displayed_user->id ) );
 	
 	do_action( 'friends_friendship_deleted', $friendship_id, $initiator_userid, $friend_userid );
 	
@@ -654,16 +620,37 @@ function friends_accept_friendship( $friendship_id ) {
 	if ( !$friendship->is_confirmed && BP_Friends_Friendship::accept( $friendship_id ) ) {
 		friends_update_friend_totals( $friendship->initiator_user_id, $friendship->friend_user_id );
 		
-		// Remove the friend request notice
+		/* Remove the friend request notice */
 		bp_core_delete_notifications_for_user_by_item_id( $friendship->friend_user_id, $friendship->initiator_user_id, 'friends', 'friendship_request' );	
 		
-		// Add a friend accepted notice for the initiating user
+		/* Add a friend accepted notice for the initiating user */
 		bp_core_add_notification( $friendship->friend_user_id, $friendship->initiator_user_id, 'friends', 'friendship_accepted' );
 		
-		// Record in activity streams
-		friends_record_activity( array( 'item_id' => $friendship_id, 'component_name' => $bp->friends->slug, 'component_action' => 'friendship_accepted', 'is_private' => 0, 'user_id' => $friendship->initiator_user_id, 'secondary_user_id' => $friendship->friend_user_id ) );
+		$initiator_link = bp_core_get_userlink( $friendship->initiator_user_id );
+		$friend_link = bp_core_get_userlink( $friendship->friend_user_id );
 		
-		// Send the email notification
+		$primary_link = apply_filters( 'friends_activity_friendship_accepted_primary_link', bp_core_get_userlink( $friendship->initiator_user_id ), &$friendship );
+		
+		/* Record in activity streams for the initiator */
+		friends_record_activity( array( 
+			'user_id' => $friendship->initiator_user_id,
+			'component_action' => 'friendship_created',
+			'content' => apply_filters( 'friends_activity_friendship_accepted', sprintf( __( '%s and %s are now friends', 'buddypress' ), $initiator_link, $friend_link ), &$friendship ),
+			'primary_link' => $primary_link,
+			'item_id' => $friendship_id
+		) );
+
+		/* Record in activity streams for the friend */
+		friends_record_activity( array( 
+			'user_id' => $friendship->friend_user_id,
+			'component_action' => 'friendship_created',
+			'content' => apply_filters( 'friends_activity_friendship_accepted', sprintf( __( '%s and %s are now friends', 'buddypress' ), $friend_link, $initiator_link ), &$friendship ),
+			'primary_link' => $primary_link,
+			'item_id' => $friendship_id,
+			'hide_sitewide' => true /* We've already got the first entry site wide */
+		) );
+		
+		/* Send the email notification */
 		require_once( BP_PLUGIN_DIR . '/bp-friends/bp-friends-notifications.php' );
 		friends_notification_accepted_request( $friendship->id, $friendship->initiator_user_id, $friendship->friend_user_id );
 
@@ -682,7 +669,7 @@ function friends_reject_friendship( $friendship_id ) {
 		// Remove the friend request notice
 		bp_core_delete_notifications_for_user_by_item_id( $friendship->friend_user_id, $friendship->initiator_user_id, 'friends', 'friendship_request' );	
 		
-		do_action( 'friends_friendship_rejected', $friendship_id );
+		do_action( 'friends_friendship_rejected', $friendship_id, &$friendship );
 		return true;
 	}
 	
@@ -717,6 +704,7 @@ function friends_remove_data( $user_id ) {
 }
 add_action( 'wpmu_delete_user', 'friends_remove_data', 1 );
 add_action( 'delete_user', 'friends_remove_data', 1 );
+add_action( 'make_spam_user', 'friends_remove_data', 1 );
 
 function friends_clear_friend_object_cache( $friendship_id ) {
 	if ( !$friendship = new BP_Friends_Friendship( $friendship_id ) )

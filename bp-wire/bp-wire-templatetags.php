@@ -19,17 +19,11 @@ class BP_Wire_Posts_Template {
 	
 	function bp_wire_posts_template( $item_id, $component_slug, $can_post, $per_page, $max ) {
 		global $bp;
-		
+
 		if ( $bp->current_component == $bp->wire->slug ) {
 			$this->table_name = $bp->profile->table_name_wire;
-			
-			// If the user is viewing their own wire, delete the notifications.
-			if ( 'all-posts' == $bp->current_action && bp_is_home() )
-				bp_core_delete_notifications_for_user_by_type( $bp->loggedin_user->id, 'xprofile', 'new_wire_post' );
-			
-		} else {
-			$this->table_name = $bp->{$component_slug}->table_name_wire;
-		}
+		} else
+			$this->table_name = $bp->{$bp->active_components[$component_slug]}->table_name_wire;
 		
 		$this->pag_page = isset( $_REQUEST['wpage'] ) ? intval( $_REQUEST['wpage'] ) : 1;
 		$this->pag_num = isset( $_REQUEST['num'] ) ? intval( $_REQUEST['num'] ) : $per_page;
@@ -40,7 +34,7 @@ class BP_Wire_Posts_Template {
 		$this->wire_posts = $this->wire_posts['wire_posts'];
 		$this->wire_post_count = count($this->wire_posts);
 		
-		if ( (int)get_site_option('non-friend-wire-posting') && ( $bp->current_component == $bp->profile->slug || $bp->current_component == $bp->wire->slug ) )
+		if ( is_site_admin() || ( (int)get_site_option('non-friend-wire-posting') && ( $bp->current_component == $bp->profile->slug || $bp->current_component == $bp->wire->slug ) ) )
 			$this->can_post = 1;
 		else
 			$this->can_post = $can_post;
@@ -82,7 +76,7 @@ class BP_Wire_Posts_Template {
 		if ( $this->current_wire_post + 1 < $this->wire_post_count ) {
 			return true;
 		} elseif ( $this->current_wire_post + 1 == $this->wire_post_count ) {
-			do_action('loop_end');
+			do_action('bp_wire_loop_end');
 			// Do some cleaning up after the loop
 			$this->rewind_wire_posts();
 		}
@@ -98,7 +92,7 @@ class BP_Wire_Posts_Template {
 		$this->wire_post = $this->next_wire_post();
 
 		if ( 0 == $this->current_wire_post ) // loop has just started
-			do_action('loop_start');
+			do_action('bp_wire_loop_start');
 	}
 }
 
@@ -120,7 +114,7 @@ function bp_has_wire_posts( $args = '' ) {
 		return false;
 		
 	$wire_posts_template = new BP_Wire_Posts_Template( $item_id, $component_slug, $can_post, $per_page, $max );		
-	return $wire_posts_template->has_wire_posts();
+	return apply_filters( 'bp_has_wire_posts', $wire_posts_template->has_wire_posts(), &$wire_posts_template );
 }
 
 function bp_wire_posts() {
@@ -152,7 +146,7 @@ function bp_wire_get_post_list( $item_id = null, $title = null, $empty_message =
 	$bp_wire_can_post = $can_post;
 	$bp_wire_show_email_notify = $show_email_notify;
 	
-	load_template( TEMPLATEPATH . '/wire/post-list.php' );
+	locate_template( array( '/wire/post-list.php' ), true );
 }
 
 function bp_wire_title() {
@@ -291,14 +285,14 @@ function bp_wire_post_author_avatar() {
 	function bp_get_wire_post_author_avatar() {
 		global $wire_posts_template;
 
-		return apply_filters( 'bp_get_wire_post_author_avatar', bp_core_get_avatar( $wire_posts_template->wire_post->user_id, 1 ) );
+		return apply_filters( 'bp_get_wire_post_author_avatar', bp_core_fetch_avatar( array( 'item_id' => $wire_posts_template->wire_post->user_id, 'type' => 'thumb' ) ) );
 	}
 
 function bp_wire_get_post_form() {
 	global $wire_posts_template;
 	
 	if ( is_user_logged_in() && $wire_posts_template->can_post )
-		load_template( TEMPLATEPATH . '/wire/post-form.php' );		
+		locate_template( array( '/wire/post-form.php' ), true );	
 }
 
 function bp_wire_get_action() {
@@ -315,7 +309,7 @@ function bp_wire_get_action() {
 		if ( $bp->current_component == $bp->wire->slug || $bp->current_component == $bp->profile->slug ) {
 			return apply_filters( 'bp_get_wire_get_action', $bp->displayed_user->domain . $bp->wire->slug . '/post/' );
 		} else {
-			return apply_filters( 'bp_get_wire_get_action', site_url() . '/' . $bp->{$bp->current_component}->slug . '/' . $uri . '/' . $bp->wire->slug . '/post/' );
+			return apply_filters( 'bp_get_wire_get_action', site_url() . '/' . $bp->{$bp->active_components[$bp->current_component]}->slug . '/' . $uri . '/' . $bp->wire->slug . '/post/' );
 		}
 	}
 
@@ -325,7 +319,7 @@ function bp_wire_poster_avatar() {
 	function bp_get_wire_poster_avatar() {
 		global $bp;
 
-		return apply_filters( 'bp_get_wire_poster_avatar', bp_core_get_avatar( $bp->loggedin_user->id, 1 ) );
+		return apply_filters( 'bp_get_wire_poster_avatar',  bp_core_fetch_avatar( array( 'item_id' => $bp->loggedin_user->id, 'type' => 'thumb' ) ) );
 	}
 
 function bp_wire_poster_name( $deprecated = true ) {
@@ -363,9 +357,9 @@ function bp_wire_delete_link() {
 
 		if ( ( $wire_posts_template->wire_post->user_id == $bp->loggedin_user->id ) || $bp->is_item_admin || is_site_admin() ) {
 			if ( $bp->wire->slug == $bp->current_component || $bp->profile->slug == $bp->current_component ) {
-				return apply_filters( 'bp_get_wire_delete_link', '<a href="' . wp_nonce_url( $bp->displayed_user->domain . $bp->wire->slug . '/delete/' . $wire_posts_template->wire_post->id, 'bp_wire_delete_link' ) . '">[' . __('Delete', 'buddypress') . ']</a>' );
+				return apply_filters( 'bp_get_wire_delete_link', '<a class="item-button delete-post confirm" href="' . wp_nonce_url( $bp->displayed_user->domain . $bp->wire->slug . '/delete/' . $wire_posts_template->wire_post->id, 'bp_wire_delete_link' ) . '">' . __('Delete', 'buddypress') . '</a>' );
 			} else {
-				return apply_filters( 'bp_get_wire_delete_link', '<a href="' . wp_nonce_url( site_url( $bp->{$bp->current_component}->slug . '/' . $uri . '/wire/delete/' . $wire_posts_template->wire_post->id ), 'bp_wire_delete_link' ) . '">[' . __('Delete', 'buddypress') . ']</a>' );
+				return apply_filters( 'bp_get_wire_delete_link', '<a class="item-button delete-post confirm" href="' . wp_nonce_url( site_url( $bp->{$bp->current_component}->slug . '/' . $uri . '/wire/delete/' . $wire_posts_template->wire_post->id ), 'bp_wire_delete_link' ) . '">' . __('Delete', 'buddypress') . '</a>' );
 			}
 		}
 	}

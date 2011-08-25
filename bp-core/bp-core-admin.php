@@ -1,7 +1,7 @@
 <?php
 
 function bp_core_admin_settings() {
-	global $wpdb, $bp;
+	global $wpdb, $bp, $current_blog;
 ?>
 	
 	<?php
@@ -84,7 +84,25 @@ function bp_core_admin_settings() {
 						<input type="radio" name="bp-admin[non-friend-wire-posting]"<?php if ( !(int)get_site_option( 'non-friend-wire-posting' ) ) : ?> checked="checked"<?php endif; ?> id="bp-admin-non-friend-wire-post" value="0" /> <?php _e( 'No', 'buddypress' ) ?>
 					</td>			
 				</tr>
-				<?php } ?>
+				<?php } ?>				
+				<tr>
+					<th scope="row"><?php _e( 'Disable user account deletion?', 'buddypress' ) ?>:</th>
+					<td>
+						<input type="radio" name="bp-admin[bp-disable-account-deletion]"<?php if ( (int)get_site_option( 'bp-disable-account-deletion' ) ) : ?> checked="checked"<?php endif; ?> id="bp-disable-account-deletion" value="1" /> <?php _e( 'Yes', 'buddypress' ) ?> &nbsp;
+						<input type="radio" name="bp-admin[bp-disable-account-deletion]"<?php if ( !(int)get_site_option( 'bp-disable-account-deletion' ) || '' == get_site_option( 'bp-disable-account-deletion' ) ) : ?> checked="checked"<?php endif; ?> id="bp-disable-account-deletion" value="0" /> <?php _e( 'No', 'buddypress' ) ?>
+					</td>			
+				</tr>
+				<?php if ( function_exists( 'bp_forums_setup') ) : ?>
+				<tr>
+					<th scope="row"><?php _e( 'Disable global forum directory?', 'buddypress' ) ?>:</th>
+					<td>
+						<input type="radio" name="bp-admin[bp-disable-forum-directory]"<?php if ( (int)get_site_option( 'bp-disable-forum-directory' ) ) : ?> checked="checked"<?php endif; ?> id="bp-disable-forum-directory" value="1" /> <?php _e( 'Yes', 'buddypress' ) ?> &nbsp;
+						<input type="radio" name="bp-admin[bp-disable-forum-directory]"<?php if ( !(int)get_site_option( 'bp-disable-forum-directory' ) || '' == get_site_option( 'bp-disable-forum-directory' ) ) : ?> checked="checked"<?php endif; ?> id="bp-disable-forum-directory" value="0" /> <?php _e( 'No', 'buddypress' ) ?>
+					</td>			
+				</tr>				
+				<?php endif; ?>
+
+				<?php if ( '' == locate_template( array( 'registration/register.php' ), false ) && $current_blog->blog_id == BP_ROOT_BLOG ) : ?>
 				<tr>
 					<th scope="row"><?php _e('Select theme to use for BuddyPress generated pages', 'buddypress' ) ?>:</th>
 					<td>
@@ -110,6 +128,7 @@ function bp_core_admin_settings() {
 						<?php endif; ?>
 					</td>			
 				</tr>
+				<?php endif; ?>
 				<tr>
 					<th scope="row"><?php _e( 'Default User Avatar', 'buddypress' ) ?></th>
 					<td>
@@ -253,6 +272,15 @@ function bp_core_admin_component_setup() {
 					<td width="45%">
 						<input type="radio" name="bp_components[bp-xprofile.php]" value="1"<?php if ( !isset( $disabled_components['bp-xprofile.php'] ) ) : ?> checked="checked" <?php endif; ?>/> <?php _e( 'Enabled', 'buddypress' ) ?>  &nbsp;
 						<input type="radio" name="bp_components[bp-xprofile.php]" value="0"<?php if ( isset( $disabled_components['bp-xprofile.php'] ) ) : ?> checked="checked" <?php endif; ?>/> <?php _e( 'Disabled', 'buddypress' ) ?>
+					</td>
+				</tr>
+				<?php endif; ?>
+				<?php if ( file_exists( BP_PLUGIN_DIR . '/bp-status.php') ) : ?>
+				<tr>
+					<td><h3><?php _e( 'Status Updates', 'buddypress' ) ?></h3><p><?php _e( 'Allow users to post status updates.', 'buddypress' ) ?></p></td>
+					<td width="45%">
+						<input type="radio" name="bp_components[bp-status.php]" value="1"<?php if ( !isset( $disabled_components['bp-status.php'] ) ) : ?> checked="checked" <?php endif; ?>/> <?php _e( 'Enabled', 'buddypress' ) ?>  &nbsp;
+						<input type="radio" name="bp_components[bp-status.php]" value="0"<?php if ( isset( $disabled_components['bp-status.php'] ) ) : ?> checked="checked" <?php endif; ?>/> <?php _e( 'Disabled', 'buddypress' ) ?>
 					</td>
 				</tr>
 				<?php endif; ?>

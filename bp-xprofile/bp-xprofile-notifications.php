@@ -24,17 +24,17 @@ function xprofile_record_wire_post_notification( $wire_post_id, $user_id, $poste
 	if ( $bp->current_component == $bp->wire->slug && !bp_is_home() ) {
 		bp_core_add_notification( $poster_id, $user_id, 'xprofile', 'new_wire_post' );
 
-		if ( !get_usermeta( $bp->loggedin_user->id, 'notification_profile_wire_post' ) || 'yes' == get_usermeta( $bp->loggedin_user->id, 'notification_profile_wire_post' ) ) {
+		if ( !get_usermeta( $user_id, 'notification_profile_wire_post' ) || 'yes' == get_usermeta( $user_id, 'notification_profile_wire_post' ) ) {
 			$poster_name = bp_core_get_user_displayname( $poster_id );
 			$wire_post = new BP_Wire_Post( $bp->profile->table_name_wire, $wire_post_id, true );
-			$ud = get_userdata($user_id);
+			$ud = get_userdata( $user_id );
 			
-			$wire_link = site_url() . '/' . BP_MEMBERS_SLUG . '/' . $ud->user_login . '/wire';
-			$settings_link = site_url() . '/' . BP_MEMBERS_SLUG . '/' . $ud->user_login . '/settings/notifications';
+			$wire_link = bp_core_get_user_domain( $user_id ) . 'wire';
+			$settings_link = bp_core_get_user_domain( $user_id ) . 'settings/notifications';
 			
 			// Set up and send the message
 			$to = $ud->user_email;
-			$subject = '[' . get_blog_option( 1, 'blogname' ) . '] ' . sprintf( __( '%s posted on your wire.', 'buddypress' ), stripslashes($poster_name) );
+			$subject = '[' . get_blog_option( BP_ROOT_BLOG, 'blogname' ) . '] ' . sprintf( __( '%s posted on your wire.', 'buddypress' ), stripslashes($poster_name) );
 
 $message = sprintf( __( 
 '%s posted on your wire:

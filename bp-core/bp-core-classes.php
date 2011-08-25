@@ -25,10 +25,7 @@ class BP_Core_User {
 	
 	var $last_active;
 	var $profile_last_updated;
-	
-	var $status;
-	var $status_last_updated;
-	
+
 	/* Extras */
 	var $total_friends;
 	var $total_blogs;
@@ -42,7 +39,7 @@ class BP_Core_User {
 			if ( $populate_extras )
 				$this->populate_extras();
 		}
-	}
+	} 
 	
 	/**
 	 * populate()
@@ -55,20 +52,20 @@ class BP_Core_User {
 	 * @uses bp_core_get_userlink() Returns a HTML formatted link for a user with the user's full name as the link text
 	 * @uses bp_core_get_user_email() Returns the email address for the user based on user ID
 	 * @uses get_usermeta() WordPress function returns the value of passed usermeta name from usermeta table
-	 * @uses bp_core_get_avatar() Returns HTML formatted avatar for a user
+	 * @uses bp_core_fetch_avatar() Returns HTML formatted avatar for a user
 	 * @uses bp_profile_last_updated_date() Returns the last updated date for a user.
 	 */
 	function populate() {
 		$this->user_url = bp_core_get_userurl( $this->id );
 		$this->user_link = bp_core_get_userlink( $this->id );
 		
-		$this->fullname = bp_core_get_user_displayname( $this->id );
-		$this->email = bp_core_get_user_email( $this->id );
-		$this->last_active = bp_core_get_last_activity( get_usermeta( $this->id, 'last_activity' ), __( 'active %s ago', 'buddypress' ) );
+		$this->fullname = attribute_escape( bp_core_get_user_displayname( $this->id ) );
+		$this->email = attribute_escape( bp_core_get_user_email( $this->id ) );
+		$this->last_active = attribute_escape( bp_core_get_last_activity( get_usermeta( $this->id, 'last_activity' ), __( 'active %s ago', 'buddypress' ) ) );
 
-		$this->avatar = bp_core_get_avatar( $this->id, 2 );
-		$this->avatar_thumb = bp_core_get_avatar( $this->id, 1 );
-		$this->avatar_mini = bp_core_get_avatar( $this->id, 1, 25, 25, false );
+		$this->avatar = bp_core_fetch_avatar( array( 'item_id' => $this->id, 'type' => 'full' ) );
+		$this->avatar_thumb = bp_core_fetch_avatar( array( 'item_id' => $this->id, 'type' => 'thumb' ) );
+		$this->avatar_mini = bp_core_fetch_avatar( array( 'item_id' => $this->id, 'type' => 'thumb', 'width' => 30, 'height' => 30 ) );
 	}
 	
 	function populate_extras() {
@@ -244,8 +241,8 @@ class BP_Core_User {
 		
 		like_escape($search_terms);	
 
-		$total_users_sql = apply_filters( 'bp_core_search_users_count_sql', "SELECT DISTINCT count(u.ID) as user_id FROM " . CUSTOM_USER_TABLE . " u LEFT JOIN {$bp->profile->table_name_data} pd ON u.ID = pd.user_id WHERE pd.value LIKE '%%$search_terms%%' ORDER BY pd.value ASC", $search_terms );
-		$paged_users_sql = apply_filters( 'bp_core_search_users_sql', "SELECT DISTINCT u.ID as user_id FROM " . CUSTOM_USER_TABLE . " u LEFT JOIN {$bp->profile->table_name_data} pd ON u.ID = pd.user_id WHERE pd.value LIKE '%%$search_terms%%' ORDER BY pd.value ASC{$pag_sql}", $search_terms, $pag_sql );
+		$total_users_sql = apply_filters( 'bp_core_search_users_count_sql', "SELECT DISTINCT count(u.ID) as user_id FROM " . CUSTOM_USER_TABLE . " u LEFT JOIN {$bp->profile->table_name_data} pd ON u.ID = pd.user_id WHERE u.spam = 0 AND u.deleted = 0 AND u.user_status = 0 AND pd.value LIKE '%%$search_terms%%' ORDER BY pd.value ASC", $search_terms );
+		$paged_users_sql = apply_filters( 'bp_core_search_users_sql', "SELECT DISTINCT u.ID as user_id FROM " . CUSTOM_USER_TABLE . " u LEFT JOIN {$bp->profile->table_name_data} pd ON u.ID = pd.user_id WHERE u.spam = 0 AND u.deleted = 0 AND u.user_status = 0 AND pd.value LIKE '%%$search_terms%%' ORDER BY pd.value ASC{$pag_sql}", $search_terms, $pag_sql );
 
 		$total_users = $wpdb->get_var( $total_users_sql );
 		$paged_users = $wpdb->get_results( $paged_users_sql );
@@ -350,7 +347,7 @@ class BP_Core_Notification {
 		global $wpdb, $bp;
 		
 		if ( $component_action )
-			$component_action_sql = $wpdb->prepare( "AND component_action = %s", $compoennt_action );
+			$component_action_sql = $wpdb->prepare( "AND component_action = %s", $component_action );
 		
 		if ( $secondary_item_id )
 			$secondary_item_sql = $wpdb->prepare( "AND secondary_item_id = %d", $secondary_item_id );

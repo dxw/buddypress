@@ -1,128 +1,106 @@
 <?php
 
-function bp_core_activation_set_headers() {
-	global $wp_object_cache;
+function bp_core_screen_activation() {
+	global $bp, $wpdb;
 	
-	define( "WP_INSTALLING", true );
-	
-	require_once( ABSPATH . WPINC . '/registration.php');
-	
-	if( is_object( $wp_object_cache ) )
-		$wp_object_cache->cache_enabled = false;
+	if ( BP_ACTIVATION_SLUG != $bp->current_component )
+		return false;
 		
-	do_action("activate_header");
-}
-
-function bp_core_activation_do_activation() {
-	global $current_site, $blog_id, $user_id; ?>
-	
-	<?php if ( empty( $_GET['key'] ) && empty( $_POST['key'] ) ) { ?>
-
-		<h3><?php _e( 'Activation Key Required', 'buddypress' ) ?></h3>
+	/* Check if an activation key has been passed */
+	if ( isset( $_GET['key'] ) ) {
 		
-		<p id="intro-text"><?php _e( 'This is the key contained in the email you were sent after registering for this site.', 'buddypress' ) ?></p>
-			
-		<div class="field-box">
-			<form name="activateform" id="activateform" method="post" action="<?php echo 'http://' . $current_site->domain . $current_site->path ?>wp-activate.php">
-				<p>
-				    <label for="key"><?php _e('Activation Key:', 'buddypress' ) ?></label>
-				    <br /><input type="text" name="key" id="key" value="" size="50" />
-				</p>
-				<p class="submit">
-				    <input id="submit" type="submit" name="Submit" class="submit" value="<?php _e('Activate &raquo;', 'buddypress' ) ?>"/>
-				</p>
-			</form>
-		</div>
+		require_once( ABSPATH . WPINC . '/registration.php' );
 		
-	<?php } else {
-
-		$key = !empty($_GET['key']) ? $_GET['key'] : $_POST['key'];
-		$result = wpmu_activate_signup($key);
-				
-		if ( is_wp_error($result) ) {
-			if ( 'already_active' == $result->get_error_code() || 'blog_taken' == $result->get_error_code() ) {
-			    $signup = $result->get_error_data();
-				?>
-				
-				<h3><?php _e('Your account is now active!', 'buddypress' ); ?></h3>
-				
-				<?php
-			  	_e( 'Your account has already been activated. You can now log in with the account details that were emailed to you.' );
-			
-			} else {
-				?>
-				<h2><?php _e('An error occurred during the activation', 'buddypress' ); ?></h2>
-				<?php
-			    echo '<p>'.$result->get_error_message().'</p>';
-			}
-		} else {
-			extract($result);
-
-			$user = new WP_User( (int) $user_id);
-			
-			?>
-			
-			<h3><?php _e('Your account is now active!', 'buddypress' ); ?></h3>
-			
-			<p class="view"><?php printf( __( 'Your account is now activated. <a href="%1$s">Login</a> or go back to the <a href="%2$s">homepage</a>.', 'buddypress' ), site_url( 'wp-login.php?redirect_to=' . site_url() ), site_url() ); ?></p>
-			
-			<div class="field-box" id="signup-welcome">
-				<p><span class="label"><?php _e( 'Username:', 'buddypress' ); ?></span> <?php echo $user->user_login ?></p>
-				<p><span class="label"><?php _e( 'Password:', 'buddypress' ); ?></span> <?php echo $password; ?></p>
-			</div>
-			
-			<?php 
-			do_action( 'bp_activation_extras', $user_id, $meta );
+		/* Activate the signup */
+		$signup = apply_filters( 'bp_core_activate_account', wpmu_activate_signup( $_GET['key'] ) );
+		
+		/* If there was errors, add a message and redirect */
+		if ( $signup->errors ) {
+			bp_core_add_message( __( 'There was an error activating your account, please try again.', 'buddypress' ), 'error' );
+			bp_core_redirect( $bp->root_domain . '/' . BP_ACTIVATION_SLUG );
 		}
+		
+		/* Set the password */
+		if ( !empty( $signup['meta']['password'] ) )
+			$wpdb->update( $wpdb->users, array( 'user_pass' => $signup['meta']['password'] ), array( 'ID' => $signup['user_id'] ), array( '%s' ), array( '%d' ) );
+		
+		/* Set any profile data */ 
+		if ( function_exists( 'xprofile_set_field_data' ) ) {
+			
+			if ( !empty( $signup['meta']['profile_field_ids'] ) ) {
+				$profile_field_ids = explode( ',', $signup['meta']['profile_field_ids'] );
+			
+				foreach( $profile_field_ids as $field_id ) {
+					$current_field = $signup['meta']["field_{$field_id}"];
+				
+					if ( !empty( $current_field ) )
+						xprofile_set_field_data( $field_id, $signup['user_id'], $current_field );
+				}
+			}
+			
+		}
+		
+		/* Check for an uploaded avatar and move that to the correct user folder */
+		$hashed_key = wp_hash( $_GET['key'] );
+		
+		/* Check if the avatar folder exists. If it does, move rename it, move it and delete the signup avatar dir */
+		if ( file_exists( WP_CONTENT_DIR . '/blogs.dir/' . BP_ROOT_BLOG . '/files/avatars/signups/' . $hashed_key ) ) {
+			@rename( WP_CONTENT_DIR . '/blogs.dir/' . BP_ROOT_BLOG . '/files/avatars/signups/' . $hashed_key, WP_CONTENT_DIR . '/blogs.dir/' . BP_ROOT_BLOG . '/files/avatars/' . $signup['user_id'] );
+		}
+		
+		/* Record the new user in the activity streams */
+		if ( function_exists( 'bp_activity_add' ) ) {
+			$userlink = bp_core_get_userlink( $signup['user_id'] );
+			
+			bp_activity_add( array(
+				'user_id' => $signup['user_id'],
+				'content' => apply_filters( 'bp_core_activity_registered_member', sprintf( __( '%s became a registered member', 'buddypress' ), $userlink ), $signup['user_id'] ),
+				'primary_link' => apply_filters( 'bp_core_actiivty_registered_member_primary_link', $userlink ),
+				'component_name' => 'profile',
+				'component_action' => 'new_member'	
+			) );
+		}
+
+		do_action( 'bp_core_account_activated', &$signup, $_GET['key'] );
+		bp_core_add_message( __( 'Your account is now active!', 'buddypress' ) );
+		
+		$bp->activation_complete = true;
 	}
+	
+	bp_core_load_template( 'registration/activate' );
 }
+add_action( 'wp', 'bp_core_screen_activation', 3 );
 
-// Notify user of signup success.
-function bp_core_activation_signup_blog_notification( $domain, $path, $title, $user, $user_email, $key, $meta ) {
-	global $current_site;
 
-	// Send email with activation link.
-	if ( 'no' == constant( "VHOST" ) ) {
-		$activate_url = bp_activation_page( false ) . "?key=$key";
-	} else {
-		$activate_url = bp_activation_page( false ) ."?key=$key";
-	}
+/***
+ * bp_core_disable_welcome_email()
+ *
+ * Since the user now chooses their password, sending it over clear-text to an
+ * email address is no longer necessary. It's also a terrible idea security wise.
+ *
+ * This will only disable the email if a custom registration template is being used.
+ */
+function bp_core_disable_welcome_email() {
+	if ( '' == locate_template( array( 'registration/register.php' ), false ) && '' == locate_template( array( 'register.php' ), false ) )
+		return true;
 	
-	$activate_url = clean_url($activate_url);
-	$admin_email = get_site_option( "admin_email" );
-	
-	if ( empty( $admin_email ) )
-		$admin_email = 'support@' . $_SERVER['SERVER_NAME'];
-	
-	$from_name = ( '' == get_site_option( "site_name" ) ) ? 'WordPress' : wp_specialchars( get_site_option( "site_name" ) );
-	$message_headers = "MIME-Version: 1.0\n" . "From: \"{$from_name}\" <{$admin_email}>\n" . "Content-Type: text/plain; charset=\"" . get_option('blog_charset') . "\"\n";
-	$message = sprintf(__("To activate your blog, please click the following link:\n\n%s\n\nAfter you activate, you will receive *another email* with your login.\n\nAfter you activate, you can visit your blog here:\n\n%s", 'buddypress' ), $activate_url, clean_url("http://{$domain}{$path}" ) );
-	$subject = '[' . $from_name . '] ' . sprintf(__('Activate %s', 'buddypress' ), clean_url('http://' . $domain . $path));
-	
-	wp_mail($user_email, $subject, $message, $message_headers);
-	
-	// Return false to stop the original WPMU function from continuing
 	return false;
 }
-add_filter( 'wpmu_signup_blog_notification', 'bp_core_activation_signup_blog_notification', 1, 7 );
+add_filter( 'wpmu_welcome_user_notification', 'bp_core_disable_welcome_email' );
 
-function bp_core_activation_signup_user_notification( $user, $user_email, $key, $meta ) {
-	global $current_site;
+/***
+ * bp_core_filter_activation_email()
+ *
+ * Filter the activation email to remove the line stating that another email will be sent
+ * with the generated login details. This is not the case due to bp_core_disable_welcome_email()
+ */
+function bp_core_filter_activation_email( $email ) {
+	if ( '' == locate_template( array( 'registration/register.php' ), false ) && '' == locate_template( array( 'register.php' ), false ) )
+		return $email;
 
-	// Send email with activation link.
-	$admin_email = get_site_option( "admin_email" );
-	
-	if ( empty( $admin_email ) )
-		$admin_email = 'support@' . $_SERVER['SERVER_NAME'];
-	
-	$from_name = ( '' == get_site_option( "site_name" ) ) ? 'WordPress' : wp_specialchars( get_site_option( "site_name" ) );
-	$message_headers = "MIME-Version: 1.0\n" . "From: \"{$from_name}\" <{$admin_email}>\n" . "Content-Type: text/plain; charset=\"" . get_option('blog_charset') . "\"\n";
-	$message = apply_filters( 'wpmu_signup_user_notification_email', sprintf( __( "To activate your user, please click the following link:\n\n%s\n\nAfter you activate, you will receive *another email* with your login.\n\n", 'buddypress' ), clean_url( bp_activation_page( false ) . "?key=$key" ) ) );
-	$subject = apply_filters( 'wpmu_signup_user_notification_subject', sprintf( __(  'Activate %s', 'buddypress' ), $user ) ); 
-
-	wp_mail( $user_email, $subject, $message, $message_headers );
-	
-	// Return false to stop the original WPMU function from continuing
-	return false;
+	return str_replace( __( 'After you activate, you will receive *another email* with your login.', 'buddypress' ), '', $email );
 }
-add_filter( 'wpmu_signup_user_notification', 'bp_core_activation_signup_user_notification', 1, 4 );
+add_filter( 'wpmu_signup_user_notification_email', 'bp_core_filter_activation_email' );
+add_filter( 'wpmu_signup_blog_notification_email', 'bp_core_filter_activation_email' );
+
+?>

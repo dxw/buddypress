@@ -3,6 +3,9 @@
 function bp_core_admin_bar() {
 	global $bp, $wpdb, $current_blog, $doing_admin_bar;
 	
+	if ( defined( 'BP_DISABLE_ADMIN_BAR' ) )
+		return false;
+	
 	$doing_admin_bar = true;
 	
 	if ( (int)get_site_option( 'hide-loggedout-adminbar' ) && !is_user_logged_in() )
@@ -26,7 +29,7 @@ function bp_core_admin_bar() {
 function bp_adminbar_logo() {
 	global $bp;
 	
-	echo '<a href="' . $bp->root_domain . '"><img id="admin-bar-logo" src="' . apply_filters( 'bp_admin_bar_logo_src', BP_PLUGIN_URL . '/bp-core/images/admin_bar_logo.gif' ) . '" alt="' . apply_filters( 'bp_admin_bar_logo_alt_text', __( 'BuddyPress', 'buddypress' ) ) . '" /></a>';
+	echo '<a href="' . $bp->root_domain . '" id="admin-bar-logo">' . get_blog_option( BP_ROOT_BLOG, 'blogname') . '</a>';
 }
 
 // **** "Log In" and "Sign Up" links (Visible when not logged in) ********
@@ -36,8 +39,8 @@ function bp_adminbar_login_menu() {
 	if ( !is_user_logged_in() ) {	
 		echo '<li class="bp-login no-arrow"><a href="' . $bp->root_domain . '/wp-login.php?redirect_to=' . urlencode( $bp->root_domain ) . '">' . __( 'Log In', 'buddypress' ) . '</a></li>';
 		
-		// Show "Sign Up" link if registrations are allowed
-		if ( get_site_option( 'registration' ) != 'none' ) {
+		// Show "Sign Up" link if user registrations are allowed
+		if ( get_site_option( 'registration' ) != 'none' && get_site_option( 'registration' ) != 'blog' ) {
 			echo '<li class="bp-signup no-arrow"><a href="' . bp_signup_page(false) . '">' . __( 'Sign Up', 'buddypress' ) . '</a></li>';
 		}
 	}
@@ -50,12 +53,9 @@ function bp_adminbar_account_menu() {
 	if ( !$bp->bp_nav )
 		return false;
 
-	/* Sort the nav by key as the array has been put together in different locations */
-	$bp->bp_nav = bp_core_sort_nav_items( $bp->bp_nav );
-	
 	if ( is_user_logged_in() ) {
 		
-		echo '<li id="bp-adminbar-account-menu"><a href="">';
+		echo '<li id="bp-adminbar-account-menu"><a href="' . bp_loggedin_user_domain() . '">';
 	
 		echo __( 'My Account', 'buddypress' ) . '</a>';
 		echo '<ul>';
@@ -67,10 +67,11 @@ function bp_adminbar_account_menu() {
 			
 			echo '<li' . $alt . '>';
 			echo '<a id="bp-admin-' . $nav_item['css_id'] . '" href="' . $nav_item['link'] . '">' . $nav_item['name'] . '</a>';
-
+			
 			if ( is_array( $bp->bp_options_nav[$nav_item['css_id']] ) ) {
 				echo '<ul>';
 				$sub_counter = 0;
+
 				foreach( $bp->bp_options_nav[$nav_item['css_id']] as $subnav_item ) {
 					$alt = ( 0 == $sub_counter % 2 ) ? ' class="alt"' : '';
 					echo '<li' . $alt . '><a id="bp-admin-' . $subnav_item['css_id'] . '" href="' . $subnav_item['link'] . '">' . $subnav_item['name'] . '</a></li>';				
@@ -167,11 +168,13 @@ function bp_adminbar_blogs_menu() {
 			}
 	
 			$alt = ( 0 == $counter % 2 ) ? ' class="alt"' : '';
-
-			echo '<li' . $alt . '>';
-			echo '<a href="' . $bp->loggedin_user->domain . $bp->blogs->slug . '/create-a-blog">' . __('Create a Blog!', 'buddypress') . '</a>';
-			echo '</li>';
-	
+			
+			if ( bp_blog_signup_enabled() ) {
+				echo '<li' . $alt . '>';
+				echo '<a href="' . $bp->loggedin_user->domain . $bp->blogs->slug . '/create-a-blog">' . __('Create a Blog!', 'buddypress') . '</a>';
+				echo '</li>';
+			}
+			
 			echo '</ul>';
 			echo '</li>';
 		}

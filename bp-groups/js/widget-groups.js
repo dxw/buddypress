@@ -10,11 +10,12 @@ jQuery(document).ready( function() {
 				action: 'widget_groups_list',
 				'cookie': encodeURIComponent(document.cookie),
 				'_wpnonce': jQuery("input#_wpnonce-groups").val(),
-				'max-groups': jQuery("input#groups_widget_max").val(),
+				'max_groups': jQuery("input#groups_widget_max").val(),
 				'filter': jQuery(this).attr('id')
 			},
 			function(response)
 			{	
+				jQuery('#ajax-loader-groups').toggle();
 				groups_wiget_response(response);
 			});
 		
@@ -30,7 +31,6 @@ function groups_wiget_response(response) {
 	if ( response[0] != "-1" ) {
 		jQuery("ul#groups-list").fadeOut(200, 
 			function() {
-				jQuery('#ajax-loader-groups').toggle();
 				jQuery("ul#groups-list").html(response[1]);
 				jQuery("ul#groups-list").fadeIn(200);
 			}
@@ -39,7 +39,6 @@ function groups_wiget_response(response) {
 	} else {					
 		jQuery("ul#groups-list").fadeOut(200, 
 			function() {
-				jQuery('#ajax-loader-groups').toggle();
 				var message = '<p>' + response[1] + '</p>';
 				jQuery("ul#groups-list").html(message);
 				jQuery("ul#groups-list").fadeIn(200);

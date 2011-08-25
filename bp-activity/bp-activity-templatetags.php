@@ -16,22 +16,21 @@ class BP_Activity_Template {
 
 	var $full_name;
 
-	function bp_activity_template( $type, $user_id, $per_page, $max, $timeframe ) {
+	function bp_activity_template( $type, $user_id, $per_page, $max, $filter ) {
 		global $bp;
 
 		$this->pag_page = isset( $_REQUEST['acpage'] ) ? intval( $_REQUEST['acpage'] ) : 1;
 		$this->pag_num = isset( $_REQUEST['num'] ) ? intval( $_REQUEST['num'] ) : $per_page;
-		$this->filter_content = false;
 		$this->activity_type = $type;
 
 		if ( $type == 'sitewide' )
-			$this->activities = bp_activity_get_sitewide_activity( $max, $this->pag_num, $this->pag_page );
+			$this->activities = bp_activity_get_sitewide_activity( $max, $this->pag_num, $this->pag_page, $filter );
 		
 		if ( $type == 'personal' )
-			$this->activities = bp_activity_get_user_activity( $user_id, $timeframe, $this->page_num, $this->pag_page );
+			$this->activities = bp_activity_get_user_activity( $user_id, $max, $this->pag_num, $this->pag_page, $filter );
 
 		if ( $type == 'friends' && ( bp_is_home() || is_site_admin() || $bp->loggedin_user->id == $user_id ) )
-			$this->activities = bp_activity_get_friends_activity( $user_id, $timeframe, $this->pag_num, $this->pag_page );
+			$this->activities = bp_activity_get_friends_activity( $user_id, $max, false, $this->pag_num, $this->pag_page, $filter );
 		
 		if ( !$max || $max >= (int)$this->activities['total'] )
 			$this->total_activity_count = (int)$this->activities['total'];
@@ -51,15 +50,17 @@ class BP_Activity_Template {
 		
 		$this->full_name = $bp->displayed_user->fullname;
 
-		$this->pag_links = paginate_links( array(
-			'base' => add_query_arg( 'acpage', '%#%' ),
-			'format' => '',
-			'total' => ceil( (int)$this->total_activity_count / (int)$this->pag_num ),
-			'current' => (int)$this->pag_page,
-			'prev_text' => '&laquo;',
-			'next_text' => '&raquo;',
-			'mid_size' => 1
-		));
+		if ( (int) $this->total_activity_count && (int) $this->pag_num ) {
+			$this->pag_links = paginate_links( array(
+				'base' => add_query_arg( 'acpage', '%#%' ),
+				'format' => '',
+				'total' => ceil( (int)$this->total_activity_count / (int)$this->pag_num ),
+				'current' => (int)$this->pag_page,
+				'prev_text' => '&laquo;',
+				'next_text' => '&raquo;',
+				'mid_size' => 1
+			));
+		}
 	}
 	
 	function has_activities() {
@@ -87,7 +88,7 @@ class BP_Activity_Template {
 		if ( $this->current_activity + 1 < $this->activity_count ) {
 			return true;
 		} elseif ( $this->current_activity + 1 == $this->activity_count ) {
-			do_action('loop_end');
+			do_action('activity_loop_end');
 			// Do some cleaning up after the loop
 			$this->rewind_activities();
 		}
@@ -106,49 +107,28 @@ class BP_Activity_Template {
 			$this->activity = (object) $this->activity;
 
 		if ( $this->current_activity == 0 ) // loop has just started
-			do_action('loop_start');
+			do_action('activity_loop_start');
 	}
 }
 
-function bp_activity_get_list( $user_id, $title, $no_activity, $limit = false ) {
-	global $bp_activity_user_id, $bp_activity_limit, $bp_activity_title, $bp_activity_no_activity;
-	
-	$bp_activity_user_id = $user_id;
-	$bp_activity_limit = $limit;
-	$bp_activity_title = $title;
-	$bp_activity_no_activity = $no_activity;
-	
-	load_template( TEMPLATEPATH . '/activity/activity-list.php' );
-}
-
 function bp_has_activities( $args = '' ) {
-	global $bp, $activities_template, $bp_activity_user_id, $bp_activity_limit;
-
+	global $bp, $activities_template;
+	
+	/* Note: any params used for filtering can be a single value, or multiple values comma separated. */
+	
 	$defaults = array(
 		'type' => 'sitewide',
-		'user_id' => false,
 		'per_page' => 25,
 		'max' => false,
-		'timeframe' => '-4 weeks'
+		'user_id' => false, // user_id to filter on
+		'object' => false, // object to filter on e.g. groups, profile, status, friends
+		'action' => false, // action to filter on e.g. new_wire_post, new_forum_post, profile_updated
+		'primary_id' => false, // object ID to filter on e.g. a group_id or forum_id or blog_id etc.
+		'secondary_id' => false, // secondary object ID to filter on e.g. a post_id
 	);
 
 	$r = wp_parse_args( $args, $defaults );
 	extract( $r, EXTR_SKIP );
-	
-	// The following lines are for backwards template compatibility.
-	if ( 'my-friends' == $bp->current_action && $bp->activity->slug == $bp->current_component )
-		$type = 'friends';
-	
-	if ( $bp->displayed_user->id && $bp->activity->slug == $bp->current_component && ( !$bp->current_action || 'just-me' == $bp->current_action ) )
-		$type = 'personal';
-	
-	if ( $bp->displayed_user->id && $bp->profile->slug == $bp->current_component )
-		$type = 'personal';
-
-	if ( $bp_activity_limit )
-		$max = $bp_activity_limit;
-
-	// END backwards compatibility ---
 
 	if ( ( 'personal' == $type || 'friends' == $type ) && !$user_id )
 		$user_id = (int)$bp->displayed_user->id;
@@ -158,8 +138,13 @@ function bp_has_activities( $args = '' ) {
 			$per_page = $max;
 	}
 	
-	$activities_template = new BP_Activity_Template( $type, $user_id, $per_page, $max, $timeframe );		
-	return $activities_template->has_activities();
+	if ( isset( $_GET['afilter'] ) )
+		$filter = array( 'object' => $_GET['afilter'] );
+	else
+		$filter = array( 'object' => $object, 'action' => $action, 'primary_id' => $primary_id, 'secondary_id' => $secondary_id );
+	
+	$activities_template = new BP_Activity_Template( $type, $user_id, $per_page, $max, $filter );		
+	return apply_filters( 'bp_has_activities', $activities_template->has_activities(), &$activities_template );
 }
 
 function bp_activities() {
@@ -179,7 +164,7 @@ function bp_activity_pagination_count() {
 	$to_num = ( $from_num + ( $activities_template->pag_num - 1 ) > $activities_template->total_activity_count ) ? $activities_template->total_activity_count : $from_num + ( $activities_template->pag_num - 1) ;
 
 	echo sprintf( __( 'Viewing item %d to %d (of %d items)', 'buddypress' ), $from_num, $to_num, $activities_template->total_activity_count ); ?> &nbsp;
-	<img id="ajax-loader-activity" src="<?php echo $bp->core->image_base ?>/ajax-loader.gif" height="7" alt="<?php _e( "Loading", "buddypress" ) ?>" style="display: none;" /><?php
+	<span class="ajax-loader"></span><?php
 }
 
 function bp_activity_pagination_links() {
@@ -213,25 +198,68 @@ function bp_activities_no_activity() {
 		return apply_filters( 'bp_get_activities_no_activity', $bp_activity_no_activity );
 	}
 
-function bp_activity_content() {
-	global $activities_template;
+function bp_activity_user_id() {
+	echo bp_get_activity_user_id();
+}
+	function bp_get_activity_user_id() {
+		global $activities_template;
+		return apply_filters( 'bp_get_activity_user_id', $activities_template->activity->user_id );
+	}
 
+function bp_activity_avatar( $args = '' ) {
+	echo bp_get_activity_avatar( $args );
+}
+	function bp_get_activity_avatar( $args = '' ) {
+		global $bp, $activities_template;
+
+		$defaults = array(
+			'type' => 'thumb',
+			'width' => 20,
+			'height' => 20,
+			'class' => 'avatar',
+			'alt' => __( 'Avatar', 'buddypress' ) 
+		);
+
+		$r = wp_parse_args( $args, $defaults );
+		extract( $r, EXTR_SKIP );
+		
+		$item_id = false;
+		if ( (int)$activities_template->activity->user_id )
+			$item_id = $activities_template->activity->user_id;
+		else if ( $activities_template->activity->item_id )
+			$item_id = $activities_template->activity->item_id;
+
+		$object = 'user';
+		if ( $bp->groups->id == $activities_template->activity->component_name && !(int) $activities_template->activity->user_id )
+			$object = 'group';
+		if ( $bp->blogs->id == $activities_template->activity->component_name && !(int) $activities_template->activity->user_id )
+			$object = 'blog';
+		
+		$object = apply_filters( 'bp_get_activity_avatar_object_' . $activities_template->activity->component_name, $object );
+		
+		return apply_filters( 'bp_get_group_avatar', bp_core_fetch_avatar( array( 'item_id' => $item_id, 'object' => $object, 'type' => $type, 'alt' => $alt, 'class' => $class, 'width' => $width, 'height' => $height ) ) );
+	}
+
+function bp_activity_content() {
 	echo bp_get_activity_content();
 }
 	function bp_get_activity_content() {
-		global $activities_template, $allowed_tags;
+		global $activities_template, $allowed_tags, $bp;
 
-		if ( bp_is_home() && $activities_template->activity_type == 'personal' ) {
+		if ( bp_is_home() && $activities_template->activity_type == 'personal' )
 			$content = bp_activity_content_filter( $activities_template->activity->content, $activities_template->activity->date_recorded, $activities_template->full_name );						
-		} else {
-			$activities_template->activity->content = bp_activity_insert_time_since( $activities_template->activity->content, $activities_template->activity->date_recorded );
-			$content = $activities_template->activity->content;
-		}
+		else
+			$content = bp_activity_content_filter( $activities_template->activity->content, $activities_template->activity->date_recorded, $activities_template->full_name, true, false, false );
+
+		/* Add 'the_content' filter to activity to allow existing plugins to replace text as they would on post text. (extra smilies etc) */
+		$content = apply_filters( 'the_content', $content );
 		
 		return apply_filters( 'bp_get_activity_content', $content );
 	}
 
 function bp_activity_content_filter( $content, $date_recorded, $full_name, $insert_time = true, $filter_words = true, $filter_you = true ) {
+	global $activities_template, $bp;
+	
 	if ( !$content )
 		return false;
 		
@@ -244,7 +272,7 @@ function bp_activity_content_filter( $content, $date_recorded, $full_name, $inse
 	/* Insert the time since */
 	if ( $insert_time )
 		$content[0] = bp_activity_insert_time_since( $content[0], $date_recorded );
-
+	
 	// The "You" and "Your" conversion is only done in english, if a translation file is present
 	// then do not translate as it causes problems in other languages.
 	if ( '' == get_locale() ) {
@@ -255,9 +283,13 @@ function bp_activity_content_filter( $content, $date_recorded, $full_name, $inse
 
 		/* Remove the 'You' and replace if with the persons name */
 		if ( $filter_you && $full_name != '' ) {
-			$content[0] = preg_replace( "/{$full_name}[<]/", 'You<', $content[0] );				
+			$content[0] = preg_replace( "/{$full_name}[<]/", 'You<', $content[0], 1 );				
 		}
 	}
+
+	/* Add the delete link if the user has permission on this item */
+	if ( ( $activities_template->activity->user_id == $bp->loggedin_user->id ) || $bp->is_item_admin || is_site_admin() )
+		$content[1] = '</span> <span class="activity-delete-link">' . bp_get_activity_delete_link() . '</span>' . $content[1];	
 	
 	$content_new = '';
 	
@@ -286,13 +318,84 @@ function bp_activity_css_class() {
 		return apply_filters( 'bp_get_activity_css_class', $activities_template->activity->component_name );
 	}
 
+function bp_activity_delete_link() {
+	echo bp_get_activity_delete_link();
+}
+	function bp_get_activity_delete_link() {
+		global $activities_template, $bp;
+
+		return apply_filters( 'bp_get_activity_delete_link', '<a href="' . wp_nonce_url( $bp->root_domain . '/' . $bp->activity->slug . '/delete/' . $activities_template->activity->id, 'bp_activity_delete_link' ) . '" class="item-button delete-activity confirm">' . __( 'Delete', 'buddypress' ) . '</a>' );
+	}
+
+function bp_activity_filter_links( $args = false ) {
+	echo bp_get_activity_filter_links( $args );
+}
+	function bp_get_activity_filter_links( $args = false ) {
+		global $activities_template, $bp;
+		
+		$defaults = array(
+			'style' => 'list'
+		);
+
+		$r = wp_parse_args( $args, $defaults );
+		extract( $r, EXTR_SKIP );
+		
+		/* Fetch the names of components that have activity recorded in the DB */
+		$component_names = BP_Activity_Activity::get_recorded_component_names();
+		
+		if ( !$component_names )
+			return false;
+		
+		foreach ( (array) $component_names as $component_name ) {
+			if ( isset( $_GET['afilter'] ) && $component_name == $_GET['afilter'] )
+				$selected = ' class="selected"';
+			else
+				unset($selected);
+
+			switch ( $style ) {
+				case 'list':
+					$tag = 'li';
+					$before = '<li id="afilter-' . $component_name . '"' . $selected . '>';
+					$after = '</li>';
+				break;
+				case 'paragraph':
+					$tag = 'p';
+					$before = '<p id="afilter-' . $component_name . '"' . $selected . '>';
+					$after = '</p>';
+				break;
+				case 'span':
+					$tag = 'span';
+					$before = '<span id="afilter-' . $component_name . '"' . $selected . '>';
+					$after = '</span>';
+				break;
+			}
+			
+			$link = add_query_arg( 'afilter', $component_name );
+			$link = remove_query_arg( 'acpage' , $link );
+
+			$link = apply_filters( 'bp_get_activity_filter_link_href', $link, $component_name );
+			
+			/* Make sure all core internal component names are translatable */
+			$translatable_component_names = array( __( 'profile', 'buddypress'), __( 'friends', 'buddypress' ), __( 'groups', 'buddypress' ), __( 'status', 'buddypress' ), __( 'blogs', 'buddypress' ) );
+			
+			$component_links[] = $before . '<a href="' . $link . '">' . ucwords( __( $component_name, 'buddypress' ) ) . '</a>' . $after;
+		}
+
+		$link = remove_query_arg( 'afilter' , $link );
+
+		if ( isset( $_GET['afilter'] ) )
+			$component_links[] = '<' . $tag . ' id="afilter-clear"><a href="' . $link . '"">' . __( 'Clear Filter', 'buddypress' ) . '</a></' . $tag . '>';
+		
+ 		return apply_filters( 'bp_get_activity_filter_links', implode( "\n", $component_links ) );
+	}
+
 function bp_sitewide_activity_feed_link() {
 	echo bp_get_sitewide_activity_feed_link();
 }
 	function bp_get_sitewide_activity_feed_link() {
 		global $bp;
 
-		return apply_filters( 'bp_get_sitewide_activity_feed_link', site_url() . '/' . $bp->activity->slug . '/feed' );
+		return apply_filters( 'bp_get_sitewide_activity_feed_link', site_url( $bp->activity->slug . '/feed' ) );
 	}
 
 function bp_activities_member_rss_link() {

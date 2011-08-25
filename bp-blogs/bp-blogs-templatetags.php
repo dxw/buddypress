@@ -43,10 +43,11 @@ function bp_show_blog_signup_form($blogname = '', $blog_title = '', $errors = ''
 
 		<p><?php _e("If you&#8217;re not going to use a great blog domain, leave it for a new user. Now have at it!", 'buddypress') ?></p>
 
-		<form id="setupform" method="post" action="<?php echo $bp->loggedin_user->domain . $bp->blogs->slug . '/create-a-blog' ?>">
+		<form class="standard-form" id="setupform" method="post" action="<?php echo $bp->loggedin_user->domain . $bp->blogs->slug . '/create-a-blog' ?>">
 
 			<input type="hidden" name="stage" value="gimmeanotherblog" />
 			<?php do_action( "signup_hidden_fields" ); ?>
+			
 			<?php bp_blogs_signup_blog($blogname, $blog_title, $errors); ?>
 			<p>
 				<input id="submit" type="submit" name="submit" class="submit" value="<?php _e('Create Blog &raquo;', 'buddypress') ?>" />
@@ -98,7 +99,8 @@ function bp_blogs_signup_blog( $blogname = '', $blog_title = '', $errors = '' ) 
 	<p>
 		<label for="blog_public_on"><?php _e('Privacy:', 'buddypress') ?></label>
 		<?php _e('I would like my blog to appear in search engines like Google and Technorati, and in public listings around this site.', 'buddypress'); ?> 
-		<div class="clear"></div>
+
+
 		<label class="checkbox" for="blog_public_on">
 			<input type="radio" id="blog_public_on" name="blog_public" value="1" <?php if( !isset( $_POST['blog_public'] ) || '1' == $_POST['blog_public'] ) { ?>checked="checked"<?php } ?> />
 			<strong><?php _e( 'Yes' , 'buddypress'); ?></strong>
@@ -306,7 +308,7 @@ function bp_has_blogs( $args = '' ) {
 	extract( $r, EXTR_SKIP );
 
 	$blogs_template = new BP_Blogs_User_Blogs_Template( $user_id, $per_page, $max );
-	return $blogs_template->has_blogs();
+	return apply_filters( 'bp_has_blogs', $blogs_template->has_blogs(), &$blogs_template );
 }
 
 function bp_blogs() {
@@ -326,7 +328,7 @@ function bp_blogs_pagination_count() {
 	$to_num = ( $from_num + ( $blogs_template->pag_num - 1 ) > $blogs_template->total_blog_count ) ? $blogs_template->total_blog_count : $from_num + ( $blogs_template->pag_num - 1 ) ;
 
 	echo sprintf( __( 'Viewing blog %d to %d (of %d blogs)', 'buddypress' ), $from_num, $to_num, $blogs_template->total_blog_count ); ?> &nbsp;
-	<img id="ajax-loader-blogs" src="<?php echo $bp->core->image_base ?>/ajax-loader.gif" height="7" alt="<?php _e( "Loading", "buddypress" ) ?>" style="display: none;" /><?php
+	<span class="ajax-loader"></span><?php
 }
 
 function bp_blogs_pagination_links() {
@@ -482,7 +484,7 @@ function bp_has_posts( $args = '' ) {
 	extract( $r, EXTR_SKIP );
 
 	$posts_template = new BP_Blogs_Blog_Post_Template( $user_id, $per_page, $max );	
-	return $posts_template->has_posts();
+	return apply_filters( 'bp_has_posts', $posts_template->has_posts(), &$posts_template );
 }
 
 function bp_posts() {
@@ -502,7 +504,7 @@ function bp_post_pagination_count() {
 	$to_num = ( $from_num + ( $posts_template->pag_num - 1 ) > $posts_template->total_post_count ) ? $posts_template->total_post_count : $from_num + ( $posts_template->pag_num - 1 ) ;
 
 	echo sprintf( __( 'Viewing post %d to %d (of %d posts)', 'buddypress' ), $from_num, $to_num, $posts_template->total_post_count ); ?> &nbsp;
-	<img id="ajax-loader-blogs" src="<?php echo $bp->core->image_base ?>/ajax-loader.gif" height="7" alt="<?php _e( "Loading", "buddypress" ) ?>" style="display: none;" /><?php
+	<span class="ajax-loader"></span><?php
 }
 
 function bp_post_pagination_links() {
@@ -519,7 +521,7 @@ function bp_post_id() {
 }
 	function bp_get_post_id() {
 		global $posts_template;
-		echo apply_filters( 'bp_get_post_id', $posts_template->post->ID );	
+		return apply_filters( 'bp_get_post_id', $posts_template->post->ID );	
 	}
 	
 function bp_post_title( $deprecated = true ) {
@@ -595,9 +597,9 @@ function bp_post_comment_count() {
 
 function bp_post_comments( $zero = 'No Comments', $one = '1 Comment', $more = '% Comments', $css_class = '', $none = 'Comments Off' ) {
 	global $posts_template, $wpdb;
-
-	$number = get_comments_number( $posts_template->post->ID );
-
+	
+	$number = (int)$posts_template->post->comment_count;
+	
 	if ( 0 == $number && 'closed' == $posts_template->postcomment_status && 'closed' == $posts_template->postping_status ) {
 		echo '<span' . ((!empty($css_class)) ? ' class="' . $css_class . '"' : '') . '>' . $none . '</span>';
 		return;
@@ -626,7 +628,12 @@ function bp_post_comments( $zero = 'No Comments', $one = '1 Comment', $more = '%
 	echo apply_filters( 'comments_popup_link_attributes', '' );
 
 	echo ' title="' . sprintf( __('Comment on %s', 'buddypress'), $title ) . '">';
-	comments_number( $zero, $one, $more, $number );
+	
+	if ( 1 == $number )
+		printf( __( '%d Comment', 'buddypress' ), $number );
+	else
+		printf( __( '%d Comments', 'buddypress' ), $number );
+		
 	echo '</a>';
 }
 
@@ -661,6 +668,9 @@ function bp_post_category( $separator = '', $parents = '', $post_id = false, $de
 
 function bp_post_tags( $before = '', $sep = ', ', $after = '' ) {
 	global $posts_template, $wpdb;
+	
+	/* Disabling this for now as it's too expensive and there is no global tags directory */
+	return false;
 	
 	switch_to_blog( $posts_template->post->blog_id );
 	$terms = bp_post_get_term_list( $before, $sep, $after );
@@ -788,7 +798,7 @@ function bp_post_get_term_list( $before = '', $sep = '', $after = '' ) {
 		return false;
 
 	foreach ( $terms as $term ) {
-		$link = get_blog_option( 1, 'siteurl') . '/tag/' . $term->slug;
+		$link = get_blog_option( BP_ROOT_BLOG, 'siteurl') . '/tag/' . $term->slug;
 		$link = apply_filters('term_link', $link);
 		
 		$term_links[] = '<a href="' . $link . '" rel="tag">' . $term->name . '</a>';
@@ -917,8 +927,7 @@ function bp_has_comments( $args = '' ) {
 	extract( $r, EXTR_SKIP );
 	
 	$comments_template = new BP_Blogs_Post_Comment_Template( $user_id, $per_page, $max );
-	
-	return $comments_template->has_comments();
+	return apply_filters( 'bp_has_comments', $comments_template->has_comments(), &$comments_template );
 }
 
 function bp_comments() {
@@ -1205,7 +1214,7 @@ function bp_site_blogs_pagination_count() {
 	$to_num = ( $from_num + ( $site_blogs_template->pag_num - 1 ) > $site_blogs_template->total_blog_count ) ? $site_blogs_template->total_blog_count : $from_num + ( $site_blogs_template->pag_num - 1 ) ;
 
 	echo sprintf( __( 'Viewing blog %d to %d (of %d blogs)', 'buddypress' ), $from_num, $to_num, $site_blogs_template->total_blog_count ); ?> &nbsp;
-	<img id="ajax-loader-blogs" src="<?php echo $bp->core->image_base ?>/ajax-loader.gif" height="7" alt="<?php _e( "Loading", "buddypress" ) ?>" style="display: none;" /><?php
+	<span class="ajax-loader"></span><?php
 }
 
 function bp_site_blogs_pagination_links() {
@@ -1311,8 +1320,8 @@ function bp_the_site_blog_hidden_fields() {
 
 function bp_directory_blogs_search_form() {
 	global $bp; ?>
-	<form action="<?php echo $bp->root_domain . '/' . blogs_SLUG  . '/search/' ?>" method="post" id="search-blogs-form">
-		<label><input type="text" name="blogs_search" id="blogs_search" value="<?php if ( isset( $_GET['s'] ) ) { echo $_GET['s']; } else { _e( 'Search anything...', 'buddypress' ); } ?>"  onfocus="if (this.value == '<?php _e( 'Search anything...', 'buddypress' ) ?>') {this.value = '';}" onblur="if (this.value == '') {this.value = '<?php _e( 'Search anything...', 'buddypress' ) ?>';}" /></label>
+	<form action="" method="get" id="search-blogs-form">
+		<label><input type="text" name="s" id="blogs_search" value="<?php if ( isset( $_GET['s'] ) ) { echo $_GET['s']; } else { _e( 'Search anything...', 'buddypress' ); } ?>"  onfocus="if (this.value == '<?php _e( 'Search anything...', 'buddypress' ) ?>') {this.value = '';}" onblur="if (this.value == '') {this.value = '<?php _e( 'Search anything...', 'buddypress' ) ?>';}" /></label>
 		<input type="submit" id="blogs_search_submit" name="blogs_search_submit" value="<?php _e( 'Search', 'buddypress' ) ?>" />
 	</form>
 <?php

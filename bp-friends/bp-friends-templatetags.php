@@ -171,7 +171,7 @@ function bp_has_friendships( $args = '' ) {
 		$filter = $_REQUEST['friend-search-box'];
 
 	$friends_template = new BP_Friendship_Template( $user_id, $type, $per_page, $max, $filter );
-	return $friends_template->has_friendships();
+	return apply_filters( 'bp_has_friendships', $friends_template->has_friendships(), &$friends_template );
 }
 
 function bp_the_friendship() {
@@ -198,9 +198,6 @@ function bp_friend_avatar_thumb() {
 }
 	function bp_get_friend_avatar_thumb() {
 		global $friends_template;
-
-		if ( !$template )
-			$template = &$friends_template->friendship->friend;
 
 		return apply_filters( 'bp_get_friend_avatar_thumb', $friends_template->friendship->friend->avatar_thumb );
 	}
@@ -288,10 +285,16 @@ function bp_friend_pagination_count() {
 	$to_num = ( $from_num + ( $friends_template->pag_num - 1 ) > $friends_template->total_friend_count ) ? $friends_template->total_friend_count : $from_num + ( $friends_template->pag_num - 1) ;
 
 	echo sprintf( __( 'Viewing friend %d to %d (of %d friends)', 'buddypress' ), $from_num, $to_num, $friends_template->total_friend_count ); ?> &nbsp;
-	<img id="ajax-loader-friends" src="<?php echo $bp->core->image_base ?>/ajax-loader.gif" height="7" alt="<?php _e( "Loading", "buddypress" ) ?>" style="display: none;" /><?php
+	<span class="ajax-loader"></span><?php 
 }
-	
 
+function bp_friend_total_for_member() {
+	echo bp_get_friend_total_for_member();
+}
+	function bp_get_friend_total_for_member() {
+		return apply_filters( 'bp_get_friend_total_for_member', BP_Friends_Friendship::total_friend_count() );
+	}
+	
 function bp_friend_search_form() {
 	global $friends_template, $bp;
 
@@ -300,7 +303,7 @@ function bp_friend_search_form() {
 ?>
 	<form action="<?php echo $action ?>" id="friend-search-form" method="post">
 
-		<label for="friend-search-box" id="friend-search-label"><?php echo $label ?> <img id="ajax-loader" src="<?php echo $bp->friends->image_base ?>/ajax-loader.gif" height="7" alt="<?php _e( 'Loading', 'buddypress' ) ?>" style="display: none;" /></label>
+		<label for="friend-search-box" id="friend-search-label"><?php echo $label ?> <span class="ajax-loader"></span></label>
 		<input type="search" name="friend-search-box" id="friend-search-box" value="<?php echo $value ?>"<?php echo $disabled ?> />
 		
 		<?php wp_nonce_field( 'friends_search', '_wpnonce_friend_search' ) ?>
@@ -338,31 +341,38 @@ function bp_friend_recent_status_link() {
 }
 
 function bp_add_friend_button( $potential_friend_id = false ) {
-	global $bp, $friends_template;
-	
-	if ( is_user_logged_in() ) {
-		
-		if ( !$potential_friend_id && $friends_template->friendship->friend )
-			$potential_friend_id = $friends_template->friendship->friend->id;
-		else if ( !$potential_friend_id && !$friends_template->friendship->friend )
-			$potential_friend_id = $bp->displayed_user->id;
-
-		if ( $bp->loggedin_user->id == $potential_friend_id )
-			return false;
-
-		$friend_status = BP_Friends_Friendship::check_is_friend( $bp->loggedin_user->id, $potential_friend_id );
-
-		echo '<div class="friendship-button ' . $friend_status . '" id="friendship-button-' . $potential_friend_id . '">';
-		if ( 'pending' == $friend_status ) {
-			echo '<a class="requested" href="' . $bp->loggedin_user->domain . $bp->friends->slug . '">' . __( 'Friendship Requested', 'buddypress' ) . '</a>';
-		} else if ( 'is_friend' == $friend_status ) {
-			echo '<a href="' . wp_nonce_url( $bp->loggedin_user->domain . $bp->friends->slug . '/remove-friend/' . $potential_friend_id, 'friends_remove_friend' ) . '" title="' . __('Cancel Friendship', 'buddypress') . '" id="friend-' . $potential_friend_id . '" rel="remove" class="remove">' . __('Cancel Friendship', 'buddypress') . '</a>';
-		} else {
-			echo '<a href="' . wp_nonce_url( $bp->loggedin_user->domain . $bp->friends->slug . '/add-friend/' . $potential_friend_id, 'friends_add_friend' ) . '" title="' . __('Add Friend', 'buddypress') . '" id="friend-' . $potential_friend_id . '" rel="add" class="add">' . __('Add Friend', 'buddypress') . '</a>';
-		}
-		echo '</div>';
-	}
+	echo bp_get_add_friend_button( $potential_friend_id );
 }
+	function bp_get_add_friend_button( $potential_friend_id = false ) {
+		global $bp, $friends_template;
+	
+		$button = false;
+		
+		if ( is_user_logged_in() ) {
+		
+			if ( !$potential_friend_id && $friends_template->friendship->friend )
+				$potential_friend_id = $friends_template->friendship->friend->id;
+			else if ( !$potential_friend_id && !$friends_template->friendship->friend )
+				$potential_friend_id = $bp->displayed_user->id;
+
+			if ( $bp->loggedin_user->id == $potential_friend_id )
+				return false;
+
+			$friend_status = BP_Friends_Friendship::check_is_friend( $bp->loggedin_user->id, $potential_friend_id );
+
+			$button = '<div class="generic-button friendship-button ' . $friend_status . '" id="friendship-button-' . $potential_friend_id . '">';
+			if ( 'pending' == $friend_status ) {
+				$button .= '<a class="requested" href="' . $bp->loggedin_user->domain . $bp->friends->slug . '">' . __( 'Friendship Requested', 'buddypress' ) . '</a>';
+			} else if ( 'is_friend' == $friend_status ) {
+				$button .= '<a href="' . wp_nonce_url( $bp->loggedin_user->domain . $bp->friends->slug . '/remove-friend/' . $potential_friend_id, 'friends_remove_friend' ) . '" title="' . __('Cancel Friendship', 'buddypress') . '" id="friend-' . $potential_friend_id . '" rel="remove" class="remove">' . __('Cancel Friendship', 'buddypress') . '</a>';
+			} else {
+				$button .= '<a href="' . wp_nonce_url( $bp->loggedin_user->domain . $bp->friends->slug . '/add-friend/' . $potential_friend_id, 'friends_add_friend' ) . '" title="' . __('Add Friend', 'buddypress') . '" id="friend-' . $potential_friend_id . '" rel="add" class="add">' . __('Add Friend', 'buddypress') . '</a>';
+			}
+			$button .= '</div>';
+		}
+		
+		return apply_filters( 'bp_get_add_friend_button', $button );
+	}
 
 function bp_friends_header_tabs() {
 	global $bp, $create_group_step, $completed_to_step;
@@ -401,13 +411,13 @@ function bp_friends_random_friends() {
 	}
 ?>	
 	<div class="info-group">
-		<h4><?php bp_word_or_name( __( "My Friends", 'buddypress' ), __( "%s's Friends", 'buddypress' ) ) ?>  (<?php echo BP_Friends_Friendship::total_friend_count( $bp->displayed_user->id ) ?>)  <a href="<?php echo $bp->displayed_user->domain . $bp->friends->slug ?>"><?php _e('See All', 'buddypress') ?> &raquo;</a></h4>
+		<h4><?php bp_word_or_name( __( "My Friends", 'buddypress' ), __( "%s's Friends", 'buddypress' ) ) ?>  (<?php echo BP_Friends_Friendship::total_friend_count( $bp->displayed_user->id ) ?>) <span><a href="<?php echo $bp->displayed_user->domain . $bp->friends->slug ?>"><?php _e('See All', 'buddypress') ?> &raquo;</a></span></h4>
 		
 		<?php if ( $friend_ids ) { ?>
 			<ul class="horiz-gallery">
 			<?php for ( $i = 0; $i < count( $friend_ids ); $i++ ) { ?>
 				<li>
-					<a href="<?php echo bp_core_get_userurl( $friend_ids[$i] ) ?>"><?php echo bp_core_get_avatar( $friend_ids[$i], 1 ) ?></a>
+					<a href="<?php echo bp_core_get_userurl( $friend_ids[$i] ) ?>"><?php echo bp_core_fetch_avatar( array( 'item_id' => $friend_ids[$i], 'type' => 'thumb' ) ) ?></a>
 					<h5><?php echo bp_core_get_userlink($friend_ids[$i]) ?></h5>
 				</li>
 			<?php } ?>
@@ -434,7 +444,7 @@ function bp_friends_random_members( $total_members = 5 ) {
 		<ul class="item-list" id="random-members-list">
 		<?php for ( $i = 0; $i < count( $user_ids['users'] ); $i++ ) { ?>
 			<li>
-				<a href="<?php echo bp_core_get_userurl( $user_ids['users'][$i]->user_id ) ?>"><?php echo bp_core_get_avatar( $user_ids['users'][$i]->user_id, 1 ) ?></a>
+				<a href="<?php echo bp_core_get_userurl( $user_ids['users'][$i]->user_id ) ?>"><?php echo bp_core_fetch_avatar( array( 'item_id' => $user_ids['users'][$i]->user_id, 'type' => 'thumb' ) ) ?></a>
 				<h5><?php echo bp_core_get_userlink($user_ids['users'][$i]->user_id) ?></h5>
 				<?php if ( function_exists( 'xprofile_get_random_profile_data' ) ) { ?>
 					<?php $random_data = xprofile_get_random_profile_data( $user_ids['users'][$i]->user_id, true ); ?>

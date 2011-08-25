@@ -4,12 +4,12 @@ Plugin Name: BuddyPress
 Plugin URI: http://buddypress.org/download/
 Description: BuddyPress will add social networking features to a new or existing WordPress MU installation.
 Author: The BuddyPress Community
-Version: 1.0.3
+Version: 1.1
 Author URI: http://buddypress.org/developers/
 Site Wide Only: true
 */
 
-define( 'BP_VERSION', '1.0.3' );
+define( 'BP_VERSION', '1.1' );
 
 /***
  * This file will load in each BuddyPress component based on which
@@ -50,5 +50,9 @@ if ( !isset( $deactivated['bp-wire.php'] ) && file_exists( BP_PLUGIN_DIR . '/bp-
 /* Extended Profiles */	
 if ( !isset( $deactivated['bp-xprofile.php'] ) && file_exists( BP_PLUGIN_DIR . '/bp-xprofile.php') )
 	include( BP_PLUGIN_DIR . '/bp-xprofile.php' );
+
+/* Status Updates */	
+if ( !isset( $deactivated['bp-status.php'] ) && file_exists( BP_PLUGIN_DIR . '/bp-status.php') )
+	include( BP_PLUGIN_DIR . '/bp-status.php' );
 
 ?>
