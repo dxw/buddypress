@@ -84,7 +84,7 @@ function bp_status_register_activity_action( $key, $value ) {
 function bp_status_action_add() {
 	global $bp;
 
-	if ( $bp->current_component != BP_STATUS_SLUG && 'add' != $bp->current_action )
+	if ( $bp->current_component != BP_STATUS_SLUG || 'add' != $bp->current_action )
 		return false;
 	
 	if ( !check_admin_referer( 'bp_status_add_status', '_wpnonce_add_status' ) )
@@ -109,11 +109,13 @@ add_action( 'init', 'bp_status_action_add' );
  * true or false on success or failure.
  */
 
-function bp_status_add_status( $user_id, $content ) {
+function bp_status_add_status( $user_id, $content, $recorded_time = false ) {
 	global $bp;
 	
 	$content = apply_filters( 'bp_status_content_before_save', $content );
-	$recorded_time = time();
+	
+	if ( !$recorded_time )	
+		$recorded_time = time();
 	
 	if ( !$content || empty($content) )
 		return false;

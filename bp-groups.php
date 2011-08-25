@@ -568,8 +568,7 @@ function groups_screen_create_group() {
 				bp_core_add_message( __( 'The group avatar was uploaded successfully!', 'buddypress' ) );
 		}
 	}
-	
-	//var_dump($_COOKIE);
+
  	bp_core_load_template( apply_filters( 'groups_template_create_group', 'groups/create' ) );
 }
 
@@ -605,7 +604,7 @@ function groups_screen_group_forum() {
 		$topic_slug = $bp->action_variables[1];
 		$topic_id = bp_forums_get_topic_id_from_slug( $topic_slug );
 		$forum_id = groups_get_groupmeta( $bp->groups->current_group->id, 'forum_id' );
-		
+
 		if ( $topic_slug && $topic_id ) {
 
 			/* Posting a reply */
@@ -2138,7 +2137,7 @@ function groups_new_group_forum_topic( $topic_title, $topic_text, $topic_tags, $
 	
 	if ( empty( $topic_title ) || empty( $topic_text ) )
 		return false;
-	
+		
 	if ( $topic_id = bp_forums_new_topic( array( 'topic_title' => $topic_title, 'topic_text' => $topic_text, 'topic_tags' => $topic_tags, 'forum_id' => $forum_id ) ) ) {
 		$topic = bp_forums_get_topic_details( $topic_id );
 
@@ -2155,7 +2154,7 @@ function groups_new_group_forum_topic( $topic_title, $topic_text, $topic_tags, $
 		) );
 		
 		do_action( 'groups_new_forum_topic', $bp->groups->current_group->id, &$topic );
-		
+
 		return $topic;
 	}
 					
