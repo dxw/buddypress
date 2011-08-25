@@ -76,7 +76,7 @@ function xprofile_install() {
 
 	}
 
-	require_once( ABSPATH . 'wp-admin/upgrade-functions.php' );
+	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 	dbDelta($sql);
 
 	do_action( 'xprofile_install' );
@@ -104,12 +104,13 @@ function xprofile_setup_globals() {
 	/* For internal identification */
 	$bp->profile->id = 'profile';
 
-	$bp->profile->table_name_groups = $wpdb->base_prefix . 'bp_xprofile_groups';
-	$bp->profile->table_name_fields = $wpdb->base_prefix . 'bp_xprofile_fields';
-	$bp->profile->table_name_data = $wpdb->base_prefix . 'bp_xprofile_data';
+	$bp->profile->slug = BP_XPROFILE_SLUG;
+
+	$bp->profile->table_name_data   = $bp->table_prefix . 'bp_xprofile_data';
+	$bp->profile->table_name_groups = $bp->table_prefix . 'bp_xprofile_groups';
+	$bp->profile->table_name_fields = $bp->table_prefix . 'bp_xprofile_fields';
 
 	$bp->profile->format_notification_function = 'xprofile_format_notifications';
-	$bp->profile->slug = BP_XPROFILE_SLUG;
 
 	/* Register this in the active components array */
 	$bp->active_components[$bp->profile->slug] = $bp->profile->id;
@@ -130,7 +131,7 @@ add_action( 'bp_setup_globals', 'xprofile_setup_globals' );
  * @package BuddyPress XProfile
  * @global $bp The global BuddyPress settings variable created in bp_core_setup_globals()
  * @global $wpdb WordPress DB access object.
- * @uses is_site_admin() returns true if the current user is a site admin, false if not
+ * @uses is_super_admin() returns true if the current user is a site admin, false if not
  * @uses bp_xprofile_install() runs the installation of DB tables for the xprofile component
  * @uses wp_enqueue_script() Adds a JS file to the JS queue ready for output
  * @uses add_submenu_page() Adds a submenu tab to a top level tab in the admin area
@@ -140,7 +141,7 @@ add_action( 'bp_setup_globals', 'xprofile_setup_globals' );
 function xprofile_add_admin_menu() {
 	global $wpdb, $bp;
 
-	if ( !is_site_admin() )
+	if ( !is_super_admin() )
 		return false;
 
 	/* Add the administration tab under the "Site Admin" tab for site administrators */
@@ -205,15 +206,15 @@ function xprofile_setup_adminbar_menu() {
 		return false;
 
 	/* Don't show this menu to non site admins or if you're viewing your own profile */
-	if ( !is_site_admin() || bp_is_my_profile() )
+	if ( !is_super_admin() || bp_is_my_profile() )
 		return false;
 	?>
 	<li id="bp-adminbar-adminoptions-menu">
 		<a href=""><?php _e( 'Admin Options', 'buddypress' ) ?></a>
 
 		<ul>
-			<li><a href="<?php echo $bp->displayed_user->domain . $bp->profile->slug ?>/edit/"><?php printf( __( "Edit %s's Profile", 'buddypress' ), attribute_escape( $bp->displayed_user->fullname ) ) ?></a></li>
-			<li><a href="<?php echo $bp->displayed_user->domain . $bp->profile->slug ?>/change-avatar/"><?php printf( __( "Edit %s's Avatar", 'buddypress' ), attribute_escape( $bp->displayed_user->fullname ) ) ?></a></li>
+			<li><a href="<?php echo $bp->displayed_user->domain . $bp->profile->slug ?>/edit/"><?php printf( __( "Edit %s's Profile", 'buddypress' ), esc_attr( $bp->displayed_user->fullname ) ) ?></a></li>
+			<li><a href="<?php echo $bp->displayed_user->domain . $bp->profile->slug ?>/change-avatar/"><?php printf( __( "Edit %s's Avatar", 'buddypress' ), esc_attr( $bp->displayed_user->fullname ) ) ?></a></li>
 
 			<?php if ( !bp_core_is_user_spammer( $bp->displayed_user->id ) ) : ?>
 				<li><a href="<?php echo wp_nonce_url( $bp->displayed_user->domain . 'admin/mark-spammer/', 'mark-unmark-spammer' ) ?>" class="confirm"><?php _e( "Mark as Spammer", 'buddypress' ) ?></a></li>
@@ -221,7 +222,7 @@ function xprofile_setup_adminbar_menu() {
 				<li><a href="<?php echo wp_nonce_url( $bp->displayed_user->domain . 'admin/unmark-spammer/', 'mark-unmark-spammer' ) ?>" class="confirm"><?php _e( "Not a Spammer", 'buddypress' ) ?></a></li>
 			<?php endif; ?>
 
-			<li><a href="<?php echo wp_nonce_url( $bp->displayed_user->domain . 'admin/delete-user/', 'delete-user' ) ?>" class="confirm"><?php printf( __( "Delete %s", 'buddypress' ), attribute_escape( $bp->displayed_user->fullname ) ) ?></a></li>
+			<li><a href="<?php echo wp_nonce_url( $bp->displayed_user->domain . 'admin/delete-user/', 'delete-user' ) ?>" class="confirm"><?php printf( __( "Delete %s", 'buddypress' ), esc_attr( $bp->displayed_user->fullname ) ) ?></a></li>
 
 			<?php do_action( 'xprofile_adminbar_menu_items' ) ?>
 		</ul>
@@ -266,7 +267,7 @@ function xprofile_screen_display_profile() {
 function xprofile_screen_edit_profile() {
 	global $bp;
 
-	if ( !bp_is_my_profile() && !is_site_admin() )
+	if ( !bp_is_my_profile() && !is_super_admin() )
 		return false;
 
 	/* Make sure a group is set. */
@@ -356,7 +357,7 @@ function xprofile_screen_edit_profile() {
 function xprofile_screen_change_avatar() {
 	global $bp;
 
-	if ( !bp_is_my_profile() && !is_site_admin() )
+	if ( !bp_is_my_profile() && !is_super_admin() )
 		return false;
 
 	$bp->avatar_admin->step = 'upload-image';
@@ -425,7 +426,7 @@ function xprofile_action_delete_avatar() {
 	/* Check the nonce */
 	check_admin_referer( 'bp_delete_avatar_link' );
 
-	if ( !bp_is_my_profile() && !is_site_admin() )
+	if ( !bp_is_my_profile() && !is_super_admin() )
 		return false;
 
 	if ( bp_core_delete_existing_avatar( array( 'item_id' => $bp->displayed_user->id ) ) )
@@ -484,7 +485,7 @@ function xprofile_record_activity( $args = true ) {
 		'type' => false,
 		'item_id' => false,
 		'secondary_item_id' => false,
-		'recorded_time' => gmdate( "Y-m-d H:i:s" ),
+		'recorded_time' => bp_core_current_time(),
 		'hide_sitewide' => false
 	);
 
@@ -908,9 +909,9 @@ function xprofile_sync_wp_profile( $user_id = false ) {
 		$lastname = trim( substr( $fullname, $space, strlen($fullname) ) );
 	}
 
-	update_usermeta( $user_id, 'nickname', $fullname );
-	update_usermeta( $user_id, 'first_name', $firstname );
-	update_usermeta( $user_id, 'last_name', $lastname );
+	update_user_meta( $user_id, 'nickname', $fullname );
+	update_user_meta( $user_id, 'first_name', $firstname );
+	update_user_meta( $user_id, 'last_name', $lastname );
 
 	$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->users} SET display_name = %s WHERE ID = %d", $fullname, $user_id ) );
 	$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->users} SET user_url = %s WHERE ID = %d", bp_core_get_user_domain( $user_id ), $user_id ) );
@@ -962,22 +963,22 @@ add_action( 'bp_activity_screen_single_activity_permalink', 'xprofile_remove_scr
  *
  * @package BuddyPress XProfile
  * @param $user_id The ID of the deleted user
- * @uses get_usermeta() Get a user meta value based on meta key from wp_usermeta
- * @uses delete_usermeta() Delete user meta value based on meta key from wp_usermeta
+ * @uses get_user_meta() Get a user meta value based on meta key from wp_usermeta
+ * @uses delete_user_meta() Delete user meta value based on meta key from wp_usermeta
  * @uses delete_data_for_user() Removes all profile data from the xprofile tables for the user
  */
 function xprofile_remove_data( $user_id ) {
 	BP_XProfile_ProfileData::delete_data_for_user( $user_id );
 
 	// delete any avatar files.
-	@unlink( get_usermeta( $user_id, 'bp_core_avatar_v1_path' ) );
-	@unlink( get_usermeta( $user_id, 'bp_core_avatar_v2_path' ) );
+	@unlink( get_user_meta( $user_id, 'bp_core_avatar_v1_path', true ) );
+	@unlink( get_user_meta( $user_id, 'bp_core_avatar_v2_path', true ) );
 
 	// unset the usermeta for avatars from the usermeta table.
-	delete_usermeta( $user_id, 'bp_core_avatar_v1' );
-	delete_usermeta( $user_id, 'bp_core_avatar_v1_path' );
-	delete_usermeta( $user_id, 'bp_core_avatar_v2' );
-	delete_usermeta( $user_id, 'bp_core_avatar_v2_path' );
+	delete_user_meta( $user_id, 'bp_core_avatar_v1' );
+	delete_user_meta( $user_id, 'bp_core_avatar_v1_path' );
+	delete_user_meta( $user_id, 'bp_core_avatar_v2' );
+	delete_user_meta( $user_id, 'bp_core_avatar_v2_path' );
 }
 add_action( 'wpmu_delete_user', 'xprofile_remove_data' );
 add_action( 'delete_user', 'xprofile_remove_data' );

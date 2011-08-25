@@ -66,21 +66,23 @@ function bp_activity_install() {
 				KEY meta_key (meta_key)
 		   	   ) {$charset_collate};";
 
-	require_once( ABSPATH . 'wp-admin/upgrade-functions.php' );
+	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 	dbDelta($sql);
 
 	update_site_option( 'bp-activity-db-version', BP_ACTIVITY_DB_VERSION );
 }
 
 function bp_activity_setup_globals() {
-	global $bp, $wpdb, $current_blog;
+	global $bp, $current_blog;
 
 	/* Internal identifier */
 	$bp->activity->id = 'activity';
 
-	$bp->activity->table_name = $wpdb->base_prefix . 'bp_activity';
-	$bp->activity->table_name_meta = $wpdb->base_prefix . 'bp_activity_meta';
 	$bp->activity->slug = BP_ACTIVITY_SLUG;
+
+	$bp->activity->table_name      = $bp->table_prefix . 'bp_activity';
+	$bp->activity->table_name_meta = $bp->table_prefix . 'bp_activity_meta';
+
 	$bp->activity->format_notification_function = 'bp_activity_format_notifications';
 
 	/* Register this in the active components array */
@@ -91,7 +93,7 @@ function bp_activity_setup_globals() {
 add_action( 'bp_setup_globals', 'bp_activity_setup_globals' );
 
 function bp_activity_check_installed() {
-	global $wpdb, $bp;
+	global $bp;
 
 	if ( get_site_option( 'bp-activity-db-version' ) < BP_ACTIVITY_DB_VERSION )
 		bp_activity_install();
@@ -171,7 +173,7 @@ function bp_activity_screen_friends() {
 	if ( !bp_is_active( 'friends' ) )
 		return false;
 
-	if ( !is_site_admin() )
+	if ( !is_super_admin() )
 		$bp->is_item_admin = false;
 
 	do_action( 'bp_activity_screen_friends' );
@@ -184,7 +186,7 @@ function bp_activity_screen_groups() {
 	if ( !bp_is_active( 'groups' ) )
 		return false;
 
-	if ( !is_site_admin() )
+	if ( !is_super_admin() )
 		$bp->is_item_admin = false;
 
 	do_action( 'bp_activity_screen_groups' );
@@ -194,7 +196,7 @@ function bp_activity_screen_groups() {
 function bp_activity_screen_favorites() {
 	global $bp;
 
-	if ( !is_site_admin() )
+	if ( !is_super_admin() )
 		$bp->is_item_admin = false;
 
 	do_action( 'bp_activity_screen_favorites' );
@@ -204,7 +206,7 @@ function bp_activity_screen_favorites() {
 function bp_activity_screen_mentions() {
 	global $bp;
 
-	if ( !is_site_admin() )
+	if ( !is_super_admin() )
 		$bp->is_item_admin = false;
 
 	do_action( 'bp_activity_screen_mentions' );
@@ -251,7 +253,7 @@ function bp_activity_screen_single_activity_permalink() {
 		if ( is_user_logged_in() )
 			bp_core_redirect( $bp->loggedin_user->domain );
 		else
-			bp_core_redirect( site_url( 'wp-login.php?redirect_to=' . clean_url( $bp->root_domain . '/' . $bp->activity->slug . '/p/' . $bp->current_action ) ) );
+			bp_core_redirect( site_url( 'wp-login.php?redirect_to=' . esc_url( $bp->root_domain . '/' . $bp->activity->slug . '/p/' . $bp->current_action ) ) );
 	}
 
 	bp_core_load_template( apply_filters( 'bp_activity_template_profile_activity_permalink', 'members/single/activity/permalink' ) );
@@ -275,14 +277,14 @@ function bp_activity_screen_notification_settings() {
 			<tr>
 				<td></td>
 				<td><?php printf( __( 'A member mentions you in an update using "@%s"', 'buddypress' ), bp_core_get_username( $bp->loggedin_user->id, $bp->loggedin_user->userdata->user_nicename, $bp->loggedin_user->userdata->user_login ) ) ?></td>
-				<td class="yes"><input type="radio" name="notifications[notification_activity_new_mention]" value="yes" <?php if ( !get_usermeta( $bp->loggedin_user->id, 'notification_activity_new_mention' ) || 'yes' == get_usermeta( $bp->loggedin_user->id, 'notification_activity_new_mention' ) ) { ?>checked="checked" <?php } ?>/></td>
-				<td class="no"><input type="radio" name="notifications[notification_activity_new_mention]" value="no" <?php if ( 'no' == get_usermeta( $bp->loggedin_user->id, 'notification_activity_new_mention' ) ) { ?>checked="checked" <?php } ?>/></td>
+				<td class="yes"><input type="radio" name="notifications[notification_activity_new_mention]" value="yes" <?php if ( !get_user_meta( $bp->loggedin_user->id, 'notification_activity_new_mention', true ) || 'yes' == get_user_meta( $bp->loggedin_user->id, 'notification_activity_new_mention', true ) ) { ?>checked="checked" <?php } ?>/></td>
+				<td class="no"><input type="radio" name="notifications[notification_activity_new_mention]" value="no" <?php if ( 'no' == get_user_meta( $bp->loggedin_user->id, 'notification_activity_new_mention', true ) ) { ?>checked="checked" <?php } ?>/></td>
 			</tr>
 			<tr>
 				<td></td>
 				<td><?php printf( __( "A member replies to an update or comment you've posted", 'buddypress' ), $current_user->user_login ) ?></td>
-				<td class="yes"><input type="radio" name="notifications[notification_activity_new_reply]" value="yes" <?php if ( !get_usermeta( $bp->loggedin_user->id, 'notification_activity_new_reply' ) || 'yes' == get_usermeta( $bp->loggedin_user->id, 'notification_activity_new_reply' ) ) { ?>checked="checked" <?php } ?>/></td>
-				<td class="no"><input type="radio" name="notifications[notification_activity_new_reply]" value="no" <?php if ( 'no' == get_usermeta( $bp->loggedin_user->id, 'notification_activity_new_reply' ) ) { ?>checked="checked" <?php } ?>/></td>
+				<td class="yes"><input type="radio" name="notifications[notification_activity_new_reply]" value="yes" <?php if ( !get_user_meta( $bp->loggedin_user->id, 'notification_activity_new_reply', true ) || 'yes' == get_user_meta( $bp->loggedin_user->id, 'notification_activity_new_reply', true ) ) { ?>checked="checked" <?php } ?>/></td>
+				<td class="no"><input type="radio" name="notifications[notification_activity_new_reply]" value="no" <?php if ( 'no' == get_user_meta( $bp->loggedin_user->id, 'notification_activity_new_reply', true ) ) { ?>checked="checked" <?php } ?>/></td>
 			</tr>
 
 			<?php do_action( 'bp_activity_screen_notification_settings' ) ?>
@@ -353,7 +355,7 @@ function bp_activity_action_delete_activity() {
 	$activity = new BP_Activity_Activity( $activity_id );
 
 	/* Check access */
-	if ( !is_site_admin() && $activity->user_id != $bp->loggedin_user->id )
+	if ( !is_super_admin() && $activity->user_id != $bp->loggedin_user->id )
 		return false;
 
 	/* Call the action before the delete so plugins can still fetch information about it */
@@ -623,23 +625,23 @@ function bp_activity_get_specific( $args = '' ) {
 }
 
 function bp_activity_add( $args = '' ) {
-	global $bp, $wpdb;
+	global $bp;
 
 	$defaults = array(
-		'id' => false, // Pass an existing activity ID to update an existing entry.
+		'id'                => false, // Pass an existing activity ID to update an existing entry.
 
-		'action' => '', // The activity action - e.g. "Jon Doe posted an update"
-		'content' => '', // Optional: The content of the activity item e.g. "BuddyPress is awesome guys!"
+		'action'            => '', // The activity action - e.g. "Jon Doe posted an update"
+		'content'           => '', // Optional: The content of the activity item e.g. "BuddyPress is awesome guys!"
 
-		'component' => false, // The name/ID of the component e.g. groups, profile, mycomponent
-		'type' => false, // The activity type e.g. activity_update, profile_updated
-		'primary_link' => '', // Optional: The primary URL for this item in RSS feeds (defaults to activity permalink)
+		'component'         => false, // The name/ID of the component e.g. groups, profile, mycomponent
+		'type'              => false, // The activity type e.g. activity_update, profile_updated
+		'primary_link'      => '', // Optional: The primary URL for this item in RSS feeds (defaults to activity permalink)
 
-		'user_id' => $bp->loggedin_user->id, // Optional: The user to record the activity for, can be false if this activity is not for a user.
-		'item_id' => false, // Optional: The ID of the specific item being recorded, e.g. a blog_id
+		'user_id'           => $bp->loggedin_user->id, // Optional: The user to record the activity for, can be false if this activity is not for a user.
+		'item_id'           => false, // Optional: The ID of the specific item being recorded, e.g. a blog_id
 		'secondary_item_id' => false, // Optional: A second ID used to further filter e.g. a comment_id
-		'recorded_time' => gmdate( "Y-m-d H:i:s" ), // The GMT time that this activity was recorded
-		'hide_sitewide' => false // Should this be hidden on the sitewide activity stream?
+		'recorded_time'     => bp_core_current_time(), // The GMT time that this activity was recorded
+		'hide_sitewide'     => false // Should this be hidden on the sitewide activity stream?
 	);
 
 	$params = wp_parse_args( $args, $defaults );
@@ -710,7 +712,7 @@ function bp_activity_post_update( $args = '' ) {
 	) );
 
 	/* Add this update to the "latest update" usermeta so it can be fetched anywhere. */
-	update_usermeta( $bp->loggedin_user->id, 'bp_latest_update', array( 'id' => $activity_id, 'content' => wp_filter_kses( $content ) ) );
+	update_user_meta( $bp->loggedin_user->id, 'bp_latest_update', array( 'id' => $activity_id, 'content' => wp_filter_kses( $content ) ) );
 
  	/* Require the notifications code so email notifications can be set on the 'bp_activity_posted_update' action. */
 	require_once( BP_PLUGIN_DIR . '/bp-activity/bp-activity-notifications.php' );
@@ -837,10 +839,10 @@ function bp_activity_delete( $args = '' ) {
 	else
 		$user_id = $args['user_id'];
 
-	$latest_update = get_usermeta( $user_id, 'bp_latest_update' );
+	$latest_update = get_user_meta( $user_id, 'bp_latest_update', true );
 	if ( !empty( $latest_update ) ) {
 		if ( in_array( (int)$latest_update['id'], (array)$activity_ids_deleted ) )
-			delete_usermeta( $user_id, 'bp_latest_update' );
+			delete_user_meta( $user_id, 'bp_latest_update' );
 	}
 
 	do_action( 'bp_activity_delete', $args );
@@ -991,14 +993,14 @@ function bp_activity_get_action( $component_id, $key ) {
 }
 
 function bp_activity_get_user_favorites( $user_id ) {
-	$my_favs = maybe_unserialize( get_usermeta( $user_id, 'bp_favorite_activities' ) );
+	$my_favs = maybe_unserialize( get_user_meta( $user_id, 'bp_favorite_activities', true ) );
 	$existing_favs = bp_activity_get_specific( array( 'activity_ids' => $my_favs ) );
 
 	foreach( (array)$existing_favs['activities'] as $fav )
 		$new_favs[] = $fav->id;
 
 	$new_favs = array_unique( (array)$new_favs );
-	update_usermeta( $user_id, 'bp_favorite_activities', $new_favs );
+	update_user_meta( $user_id, 'bp_favorite_activities', $new_favs );
 
 	return apply_filters( 'bp_activity_get_user_favorites', $new_favs );
 }
@@ -1010,7 +1012,7 @@ function bp_activity_add_user_favorite( $activity_id, $user_id = false ) {
 		$user_id = $bp->loggedin_user->id;
 
 	/* Update the user's personal favorites */
-	$my_favs = maybe_unserialize( get_usermeta( $bp->loggedin_user->id, 'bp_favorite_activities' ) );
+	$my_favs = maybe_unserialize( get_user_meta( $bp->loggedin_user->id, 'bp_favorite_activities', true ) );
 	$my_favs[] = $activity_id;
 
 	/* Update the total number of users who have favorited this activity */
@@ -1021,7 +1023,7 @@ function bp_activity_add_user_favorite( $activity_id, $user_id = false ) {
 	else
 		$fav_count = 1;
 
-	update_usermeta( $bp->loggedin_user->id, 'bp_favorite_activities', $my_favs );
+	update_user_meta( $bp->loggedin_user->id, 'bp_favorite_activities', $my_favs );
 	bp_activity_update_meta( $activity_id, 'favorite_count', $fav_count );
 
 	do_action( 'bp_activity_add_user_favorite', $activity_id, $user_id );
@@ -1036,7 +1038,7 @@ function bp_activity_remove_user_favorite( $activity_id, $user_id = false ) {
 		$user_id = $bp->loggedin_user->id;
 
 	/* Remove the fav from the user's favs */
-	$my_favs = maybe_unserialize( get_usermeta( $user_id, 'bp_favorite_activities' ) );
+	$my_favs = maybe_unserialize( get_user_meta( $user_id, 'bp_favorite_activities', true ) );
 	$my_favs = array_flip( (array) $my_favs );
 	unset( $my_favs[$activity_id] );
 	$my_favs = array_unique( array_flip( $my_favs ) );
@@ -1049,7 +1051,7 @@ function bp_activity_remove_user_favorite( $activity_id, $user_id = false ) {
 		bp_activity_update_meta( $activity_id, 'favorite_count', $fav_count );
 	}
 
-	update_usermeta( $user_id, 'bp_favorite_activities', $my_favs );
+	update_user_meta( $user_id, 'bp_favorite_activities', $my_favs );
 
 	do_action( 'bp_activity_remove_user_favorite', $activity_id, $user_id );
 
@@ -1171,8 +1173,8 @@ function bp_activity_remove_data( $user_id ) {
 	bp_activity_delete( array( 'user_id' => $user_id ) );
 
 	// Remove any usermeta
-	delete_usermeta( $user_id, 'bp_latest_update' );
-	delete_usermeta( $user_id, 'bp_favorite_activities' );
+	delete_user_meta( $user_id, 'bp_latest_update' );
+	delete_user_meta( $user_id, 'bp_favorite_activities' );
 
 	do_action( 'bp_activity_remove_data', $user_id );
 }
@@ -1180,6 +1182,21 @@ add_action( 'wpmu_delete_user', 'bp_activity_remove_data' );
 add_action( 'delete_user', 'bp_activity_remove_data' );
 add_action( 'make_spam_user', 'bp_activity_remove_data' );
 
+/**
+ * updates_register_activity_actions()
+ * 
+ * Register the activity stream actions for updates
+ * 
+ * @global array $bp
+ */
+function updates_register_activity_actions() {
+	global $bp;
+
+	bp_activity_set_action( $bp->activity->id, 'activity_update', __( 'Posted an update', 'buddypress' ) );
+
+	do_action( 'updates_register_activity_actions' );
+}
+add_action( 'bp_register_activity_actions', 'updates_register_activity_actions' );
 
 /********************************************************************************
  * Custom Actions

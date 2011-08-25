@@ -37,7 +37,7 @@ function bp_blogs_install() {
 		     ) {$charset_collate};";
 
 
-	require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
+	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
 	dbDelta($sql);
 
@@ -54,7 +54,7 @@ function bp_blogs_check_installed() {
 	global $wpdb, $bp, $userdata;
 
 	/* Only create the bp-blogs tables if this is a multisite install */
-	if ( is_site_admin() && bp_core_is_multisite() ) {
+	if ( is_super_admin() && bp_core_is_multisite() ) {
 		/* Need to check db tables exist, activate hook no-worky in mu-plugins folder. */
 		if ( get_site_option( 'bp-blogs-db-version' ) < BP_BLOGS_DB_VERSION )
 			bp_blogs_install();
@@ -68,10 +68,12 @@ function bp_blogs_setup_globals() {
 	/* For internal identification */
 	$bp->blogs->id = 'blogs';
 
-	$bp->blogs->table_name = $wpdb->base_prefix . 'bp_user_blogs';
-	$bp->blogs->table_name_blogmeta = $wpdb->base_prefix . 'bp_user_blogs_blogmeta';
-	$bp->blogs->format_notification_function = 'bp_blogs_format_notifications';
 	$bp->blogs->slug = BP_BLOGS_SLUG;
+
+	$bp->blogs->table_name          = $bp->table_prefix . 'bp_user_blogs';
+	$bp->blogs->table_name_blogmeta = $bp->table_prefix . 'bp_user_blogs_blogmeta';
+
+	$bp->blogs->format_notification_function = 'bp_blogs_format_notifications';
 
 	/* Register this in the active components array */
 	$bp->active_components[$bp->blogs->slug] = $bp->blogs->id;
@@ -213,7 +215,7 @@ function bp_blogs_record_activity( $args = '' ) {
 		'type' => false,
 		'item_id' => false,
 		'secondary_item_id' => false,
-		'recorded_time' => gmdate( "Y-m-d H:i:s" ),
+		'recorded_time' => bp_core_current_time(),
 		'hide_sitewide' => false
 	);
 
@@ -228,7 +230,7 @@ function bp_blogs_record_activity( $args = '' ) {
 		$action = apply_filters( 'bp_blogs_record_activity_action', $action );
 
 	if ( !empty( $content ) )
-		$content = apply_filters( 'bp_blogs_record_activity_content', bp_create_excerpt( $content ) );
+		$content = apply_filters( 'bp_blogs_record_activity_content', bp_create_excerpt( $content ), $content );
 
 	/* Check for an existing entry and update if one exists. */
 	$id = bp_activity_get_activity_id( array(
@@ -318,6 +320,16 @@ function bp_blogs_record_existing_blogs() {
 	}
 }
 
+/**
+ * Makes BuddyPress aware of a new site so that it can track its activity.
+ *
+ * @global object $bp BuddyPress global settings
+ * @param int $blog_id
+ * @param int $user_id
+ * @param $bool $no_activity ; optional.
+ * @since 1.0
+ * @uses BP_Blogs_Blog
+ */
 function bp_blogs_record_blog( $blog_id, $user_id, $no_activity = false ) {
 	global $bp;
 
@@ -338,17 +350,17 @@ function bp_blogs_record_blog( $blog_id, $user_id, $no_activity = false ) {
 
 	bp_blogs_update_blogmeta( $recorded_blog->blog_id, 'name', $name );
 	bp_blogs_update_blogmeta( $recorded_blog->blog_id, 'description', $description );
-	bp_blogs_update_blogmeta( $recorded_blog->blog_id, 'last_activity', gmdate( "Y-m-d H:i:s" ) );
+	bp_blogs_update_blogmeta( $recorded_blog->blog_id, 'last_activity', bp_core_current_time() );
 
-	/* Only record this activity if the blog is public */
+	// Only record this activity if the blog is public
 	if ( (int)$_POST['blog_public'] && !$no_activity ) {
-		/* Record this in activity streams */
+		// Record this in activity streams
 		bp_blogs_record_activity( array(
-			'user_id' => $recorded_blog->user_id,
-			'action' => apply_filters( 'bp_blogs_activity_created_blog_action', sprintf( __( '%s created the blog %s', 'buddypress'), bp_core_get_userlink( $recorded_blog->user_id ), '<a href="' . get_blog_option( $recorded_blog->blog_id, 'siteurl' ) . '">' . attribute_escape( $name ) . '</a>' ), &$recorded_blog, $name, $description ),
-			'primary_link' => apply_filters( 'bp_blogs_activity_created_blog_primary_link', get_blog_option( $recorded_blog->blog_id, 'siteurl' ), $recorded_blog->blog_id ),
-			'type' => 'new_blog',
-			'item_id' => $recorded_blog->blog_id
+			'user_id'      => $recorded_blog->user_id,
+			'action'       => apply_filters( 'bp_blogs_activity_created_blog_action', sprintf( __( '%s created the blog %s', 'buddypress'), bp_core_get_userlink( $recorded_blog->user_id ), '<a href="' . get_site_url( $recorded_blog->blog_id ) . '">' . esc_attr( $name ) . '</a>' ), &$recorded_blog, $name, $description ),
+			'primary_link' => apply_filters( 'bp_blogs_activity_created_blog_primary_link', get_site_url( $recorded_blog->blog_id ), $recorded_blog->blog_id ),
+			'type'         => 'new_blog',
+			'item_id'      => $recorded_blog->blog_id
 		) );
 	}
 
@@ -425,7 +437,7 @@ function bp_blogs_record_post( $post_id, $post, $user_id = false ) {
 	} else
 		bp_blogs_remove_post( $post_id, $blog_id );
 
-	bp_blogs_update_blogmeta( $blog_id, 'last_activity', gmdate( "Y-m-d H:i:s" ) );
+	bp_blogs_update_blogmeta( $blog_id, 'last_activity', bp_core_current_time() );
 
 	do_action( 'bp_blogs_new_blog_post', $post_id, $post, $user_id );
 }
@@ -439,10 +451,11 @@ add_action( 'save_post', 'bp_blogs_record_post', 10, 2 );
  *
  * @global object $wpdb
  * @global $bp $bp
- * @param <type> $comment_id
- * @param <type> $is_approved
- * @return <type>
+ * @param int $comment_id
+ * @param bool $is_approved
+ * @return mixed
  */
+
 function bp_blogs_record_comment( $comment_id, $is_approved = true ) {
 	global $wpdb, $bp;
 
@@ -450,20 +463,24 @@ function bp_blogs_record_comment( $comment_id, $is_approved = true ) {
 	$recorded_comment = get_comment( $comment_id );
 
 	// Don't record activity if the comment hasn't been approved
-	if ( !$is_approved || true != $recorded_comment->comment_approved )
+	if ( !$is_approved || !$recorded_comment->comment_approved )
 		return false;
 
-	// Get blog and post data
-	$blog_id = (int)$wpdb->blogid;
-	$recorded_comment->post = get_post( $recorded_comment->comment_post_ID );
-
+	// Don't record activity if no email address has been included
+	if ( empty( $recorded_comment->comment_author_email ) )
+		return false;
+	
 	// Get the user_id from the comment author email.
 	$user = get_user_by_email( $recorded_comment->comment_author_email );
 	$user_id = (int)$user->ID;
 
 	// If there's no registered user id, don't record activity
-	if ( !$user_id )
+	if ( empty( $user_id ) )
 		return false;
+
+	// Get blog and post data
+	$blog_id = (int)$wpdb->blogid;
+	$recorded_comment->post = get_post( $recorded_comment->comment_post_ID );
 
 	// If this is a password protected post, don't record the comment
 	if ( !empty( $recorded_comment->post->post_password ) )
@@ -473,27 +490,27 @@ function bp_blogs_record_comment( $comment_id, $is_approved = true ) {
 	if ( get_blog_option( $blog_id, 'blog_public' ) ) {
 
 		// Get activity related links
-		$post_permalink		= get_permalink( $recorded_comment->comment_post_ID );
-		$comment_link		= htmlspecialchars( get_comment_link( $recorded_comment->comment_ID ) );
+		$post_permalink = get_permalink( $recorded_comment->comment_post_ID );
+		$comment_link   = htmlspecialchars( get_comment_link( $recorded_comment->comment_ID ) );
 
 		// Prepare to record in activity streams
-		$activity_action	= sprintf( __( '%s commented on the blog post %s', 'buddypress' ), bp_core_get_userlink( $user_id ), '<a href="' . $post_permalink . '">' . $recorded_comment->post->post_title . '</a>' );
+		$activity_action	= sprintf( __( '%s commented on the blog post %s', 'buddypress' ), bp_core_get_userlink( $user_id ), '<a href="' . $post_permalink . '">' . apply_filters( 'the_title', $recorded_comment->post->post_title ) . '</a>' );
 		$activity_content	= $recorded_comment->comment_content;
 
 		// Record in activity streams
 		bp_blogs_record_activity( array(
-			'user_id'			=> $user_id,
-			'action'			=> apply_filters( 'bp_blogs_activity_new_comment_action', $activity_action, &$recorded_comment, $comment_link ),
-			'content'			=> apply_filters( 'bp_blogs_activity_new_comment_content', $activity_content, &$recorded_comment, $comment_link ),
-			'primary_link'		=> apply_filters( 'bp_blogs_activity_new_comment_primary_link', $comment_link, &$recorded_comment ),
-			'type'				=> 'new_blog_comment',
-			'item_id'			=> $blog_id,
-			'secondary_item_id'	=> $comment_id,
-			'recorded_time'		=> $recorded_comment->comment_date_gmt
+			'user_id'           => $user_id,
+			'action'            => apply_filters( 'bp_blogs_activity_new_comment_action', $activity_action, &$recorded_comment, $comment_link ),
+			'content'           => apply_filters( 'bp_blogs_activity_new_comment_content', $activity_content, &$recorded_comment, $comment_link ),
+			'primary_link'      => apply_filters( 'bp_blogs_activity_new_comment_primary_link', $comment_link, &$recorded_comment ),
+			'type'              => 'new_blog_comment',
+			'item_id'           => $blog_id,
+			'secondary_item_id' => $comment_id,
+			'recorded_time'     => $recorded_comment->comment_date_gmt
 		) );
 
 		// Update the blogs last active date
-		bp_blogs_update_blogmeta( $blog_id, 'last_activity', gmdate( "Y-m-d H:i:s" ) );
+		bp_blogs_update_blogmeta( $blog_id, 'last_activity', bp_core_current_time() );
 	}
 
 	return $recorded_comment;
@@ -642,7 +659,7 @@ function bp_blogs_redirect_to_random_blog() {
 	if ( $bp->current_component == $bp->blogs->slug && isset( $_GET['random-blog'] ) ) {
 		$blog = bp_blogs_get_random_blogs( 1, 1 );
 
-		bp_core_redirect( get_blog_option( $blog['blogs'][0]->blog_id, 'siteurl') );
+		bp_core_redirect( get_site_url( $blog['blogs'][0]->blog_id ) );
 	}
 }
 add_action( 'wp', 'bp_blogs_redirect_to_random_blog', 6 );

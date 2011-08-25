@@ -309,9 +309,6 @@ class BB_Install
 	function get_languages()
 	{
 		foreach ( bb_glob( BB_LANG_DIR . '*.mo' ) as $language ) {
-			if ( substr( $language, 0, 18 ) === 'continents-cities-' ) {
-				continue;
-			}
 			$language = str_replace( '.mo', '', basename( $language ) );
 			$this->languages[$language] = $language;
 		}

@@ -204,7 +204,7 @@ Class BP_Groups_Group {
 			$order_sql = "ORDER BY $sort_by $order";
 		}
 
-		if ( !is_site_admin() )
+		if ( !is_super_admin() )
 			$hidden_sql = "AND status != 'hidden'";
 
 		$paged_groups = $wpdb->get_results( "SELECT id as group_id FROM {$bp->groups->table_name} WHERE ( name LIKE '%%$filter%%' OR description LIKE '%%$filter%%' ) {$hidden_sql} {$order_sql} {$pag_sql}" );
@@ -263,7 +263,7 @@ Class BP_Groups_Group {
 		if ( $limit && $page )
 			$pag_sql = $wpdb->prepare( " LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 
-		if ( !is_user_logged_in() || ( !is_site_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
+		if ( !is_user_logged_in() || ( !is_super_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
 			$hidden_sql = "AND g.status != 'hidden'";
 
 		if ( $search_terms ) {
@@ -295,7 +295,7 @@ Class BP_Groups_Group {
 		if ( $limit && $page )
 			$pag_sql = $wpdb->prepare( " LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 
-		if ( !is_user_logged_in() || ( !is_site_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
+		if ( !is_user_logged_in() || ( !is_super_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
 			$hidden_sql = "AND g.status != 'hidden'";
 
 		if ( $search_terms ) {
@@ -328,7 +328,7 @@ Class BP_Groups_Group {
 			$pag_sql = $wpdb->prepare( " LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 		}
 
-		if ( !is_user_logged_in() || ( !is_site_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
+		if ( !is_user_logged_in() || ( !is_super_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
 			$hidden_sql = "AND g.status != 'hidden'";
 
 		if ( $search_terms ) {
@@ -360,7 +360,7 @@ Class BP_Groups_Group {
 		if ( $limit && $page )
 			$pag_sql = $wpdb->prepare( " LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 
-		if ( !is_user_logged_in() || ( !is_site_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
+		if ( !is_user_logged_in() || ( !is_super_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
 			$hidden_sql = " AND g.status != 'hidden'";
 
 		if ( $search_terms ) {
@@ -396,7 +396,7 @@ Class BP_Groups_Group {
 			$pag_sql = $wpdb->prepare( " LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 		}
 
-		if ( !is_user_logged_in() || ( !is_site_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
+		if ( !is_user_logged_in() || ( !is_super_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
 			$hidden_sql = " AND g.status != 'hidden'";
 
 		if ( $search_terms ) {
@@ -432,7 +432,7 @@ Class BP_Groups_Group {
 			$pag_sql = $wpdb->prepare( " LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 		}
 
-		if ( !is_user_logged_in() || ( !is_site_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
+		if ( !is_user_logged_in() || ( !is_super_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
 			$hidden_sql = " AND g.status != 'hidden'";
 
 		if ( $search_terms ) {
@@ -469,7 +469,7 @@ Class BP_Groups_Group {
 		if ( $only_public )
 			$where_conditions[] = $wpdb->prepare( "g.status = 'public'" );
 
-		if ( !is_site_admin() )
+		if ( !is_super_admin() )
 			$where_conditions[] = $wpdb->prepare( "g.status != 'hidden'");
 
 		// Build where sql statement if necessary
@@ -505,10 +505,18 @@ Class BP_Groups_Group {
 	function get_by_letter( $letter, $limit = null, $page = null, $populate_extras = true ) {
 		global $wpdb, $bp;
 
-		if ( strlen($letter) > 1 || is_numeric($letter) || !$letter )
-			return false;
+		// Multibyte compliance
+		if ( function_exists( 'mb_strlen' ) ) {
+			if ( mb_strlen( $letter, 'UTF-8' ) > 1 || is_numeric( $letter ) || !$letter ) {
+				return false;
+			}
+		} else {
+			if ( strlen( $letter ) > 1 || is_numeric( $letter ) || !$letter ) {
+				return false;
+			}
+		}
 
-		if ( !is_site_admin() )
+		if ( !is_super_admin() )
 			$hidden_sql = $wpdb->prepare( " AND status != 'hidden'");
 
 		$letter = like_escape( $wpdb->escape( $letter ) );
@@ -535,7 +543,7 @@ Class BP_Groups_Group {
 		if ( $limit && $page )
 			$pag_sql = $wpdb->prepare( " LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 
-		if ( !is_user_logged_in() || ( !is_site_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
+		if ( !is_user_logged_in() || ( !is_super_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
 			$hidden_sql = "AND g.status != 'hidden'";
 
 		if ( $search_terms ) {
@@ -596,7 +604,7 @@ Class BP_Groups_Group {
 	function get_total_group_count() {
 		global $wpdb, $bp;
 
-		if ( !is_site_admin() )
+		if ( !is_super_admin() )
 			$hidden_sql = "WHERE status != 'hidden'";
 
 		return $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(id) FROM {$bp->groups->table_name} {$hidden_sql}" ) );
@@ -748,9 +756,9 @@ Class BP_Groups_Member {
 
 		groups_update_groupmeta( $this->group_id, 'total_member_count', ( (int) groups_get_groupmeta( $this->group_id, 'total_member_count' ) - 1 ) );
 
-		$group_count = get_usermeta( $this->user_id, 'total_group_count' );
+		$group_count = get_user_meta( $this->user_id, 'total_group_count', true );
 		if ( !empty( $group_count ) )
-			update_usermeta( $this->user_id, 'total_group_count', (int)$group_count - 1 );
+			update_user_meta( $this->user_id, 'total_group_count', (int)$group_count - 1 );
 
 		return $this->save();
 	}
@@ -762,20 +770,41 @@ Class BP_Groups_Member {
 		$this->is_banned = 0;
 
 		groups_update_groupmeta( $this->group_id, 'total_member_count', ( (int) groups_get_groupmeta( $this->group_id, 'total_member_count' ) + 1 ) );
-		update_usermeta( $this->user_id, 'total_group_count', (int)get_usermeta( $this->user_id, 'total_group_count' ) + 1 );
+		update_user_meta( $this->user_id, 'total_group_count', (int)get_user_meta( $this->user_id, 'total_group_count', true ) + 1 );
 
 		return $this->save();
 	}
 
 	function accept_invite() {
-		$this->inviter_id = 0;
-		$this->is_confirmed = 1;
-		$this->date_modified = gmdate( "Y-m-d H:i:s" );
+		$this->inviter_id    = 0;
+		$this->is_confirmed  = 1;
+		$this->date_modified = bp_core_current_time();
+
+		update_user_meta( $this->user_id, 'total_group_count', (int)get_user_meta( $this->user_id, 'total_group_count', true ) + 1 );
 	}
 
 	function accept_request() {
 		$this->is_confirmed = 1;
-		$this->date_modified = gmdate( "Y-m-d H:i:s" );
+		$this->date_modified = bp_core_current_time();
+
+		update_user_meta( $this->user_id, 'total_group_count', (int)get_user_meta( $this->user_id, 'total_group_count', true ) + 1 );
+	}
+
+	function remove() {
+		global $wpdb, $bp;
+
+		$sql = $wpdb->prepare( "DELETE FROM {$bp->groups->table_name_members} WHERE user_id = %d AND group_id = %d", $this->user_id, $this->group_id );
+
+		if ( !$result = $wpdb->query( $sql ) )
+			return false;
+
+		groups_update_groupmeta( $this->group_id, 'total_member_count', ( (int) groups_get_groupmeta( $this->group_id, 'total_member_count' ) - 1 ) );
+
+		$group_count = get_user_meta( $this->user_id, 'total_group_count', true );
+		if ( !empty( $group_count ) )
+			update_user_meta( $this->user_id, 'total_group_count', (int)$group_count - 1 );
+
+		return $result;
 	}
 
 	/* Static Functions */
@@ -872,7 +901,7 @@ Class BP_Groups_Member {
 		if ( !$user_id )
 			$user_id = $bp->displayed_user->id;
 
-		if ( $user_id != $bp->loggedin_user->id && !is_site_admin() ) {
+		if ( $user_id != $bp->loggedin_user->id && !is_super_admin() ) {
 			return $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT m.group_id) FROM {$bp->groups->table_name_members} m, {$bp->groups->table_name} g WHERE m.group_id = g.id AND g.status != 'hidden' AND m.user_id = %d AND m.is_confirmed = 1 AND m.is_banned = 0", $user_id ) );
 		} else {
 			return $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT m.group_id) FROM {$bp->groups->table_name_members} m, {$bp->groups->table_name} g WHERE m.group_id = g.id AND m.user_id = %d AND m.is_confirmed = 1 AND m.is_banned = 0", $user_id ) );
@@ -952,6 +981,24 @@ Class BP_Groups_Member {
 			return false;
 
 		return $wpdb->get_var( $wpdb->prepare( "SELECT is_banned FROM {$bp->groups->table_name_members} WHERE user_id = %d AND group_id = %d", $user_id, $group_id ) );
+	}
+
+	/**
+	 * Is the specified user the creator of the group?
+	 *
+	 * @global object $bp BuddyPress global settings
+	 * @global wpdb $wpdb WordPress database object
+	 * @param int $user_id
+	 * @param int $group_id
+	 * @since 1.2.6
+	 */
+	function check_is_creator( $user_id, $group_id ) {
+		global $bp, $wpdb;
+
+		if ( !$user_id )
+			return false;
+
+		return $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$bp->groups->table_name} WHERE creator_id = %d AND id = %d", $user_id, $group_id ) );
 	}
 
 	function check_for_membership_request( $user_id, $group_id ) {
@@ -1046,13 +1093,26 @@ Class BP_Groups_Member {
 		return $wpdb->query( $wpdb->prepare( "DELETE FROM {$bp->groups->table_name_members} WHERE group_id = %d", $group_id ) );
 	}
 
+	/**
+	 * Delete all group membership information for the specified user
+	 *
+	 * @global object $bp BuddyPress global settings
+	 * @global wpdb $wpdb WordPress database object
+	 * @param int $user_id
+	 * @since 1.0
+	 * @uses BP_Groups_Member
+	 */
 	function delete_all_for_user( $user_id ) {
-		global $wpdb, $bp;
+		global $bp, $wpdb;
 
 		// Get all the group ids for the current user's groups and update counts
 		$group_ids = BP_Groups_Member::get_group_ids( $user_id );
 		foreach ( $group_ids['groups'] as $group_id ) {
 			groups_update_groupmeta( $group_id, 'total_member_count', groups_get_total_member_count( $group_id ) - 1 );
+
+			// If current user is the creator of a group and is the sole admin, delete that group to avoid counts going out-of-sync
+			if ( groups_is_user_admin( $user_id, $group_id ) && count( groups_get_group_admins( $group_id ) ) < 2 && groups_is_user_creator( $user_id, $group_id ) )
+				groups_delete_group( $group_id );
 		}
 
 		return $wpdb->query( $wpdb->prepare( "DELETE FROM {$bp->groups->table_name_members} WHERE user_id = %d", $user_id ) );
@@ -1124,21 +1184,25 @@ class BP_Group_Extension {
 		global $bp;
 
 		if ( $this->enable_create_step ) {
-			/* Insert the group creation step for the new group extension */
+			// Insert the group creation step for the new group extension
 			$bp->groups->group_creation_steps[$this->slug] = array( 'name' => $this->name, 'slug' => $this->slug, 'position' => $this->create_step_position );
 
-			/* Attach the group creation step display content action */
+			// Attach the group creation step display content action
 			add_action( 'groups_custom_create_steps', array( &$this, 'create_screen' ) );
 
-			/* Attach the group creation step save content action */
+			// Attach the group creation step save content action
 			add_action( 'groups_create_group_step_save_' . $this->slug, array( &$this, 'create_screen_save' ) );
 		}
 
-		/* Construct the admin edit tab for the new group extension */
+		// Construct the admin edit tab for the new group extension
 		if ( $this->enable_edit_item ) {
-			add_action( 'groups_admin_tabs', create_function( '$current, $group_slug', 'if ( "' . attribute_escape( $this->slug ) . '" == $current ) $selected = " class=\"current\""; echo "<li{$selected}><a href=\"' . $bp->root_domain . '/' . $bp->groups->slug . '/{$group_slug}/admin/' . attribute_escape( $this->slug ) . '\">' . attribute_escape( $this->name ) . '</a></li>";' ), 10, 2 );
+			add_action( 'groups_admin_tabs', create_function( '$current, $group_slug', 'if ( "' . esc_attr( $this->slug ) . '" == $current ) $selected = " class=\"current\""; echo "<li{$selected}><a href=\"' . $bp->root_domain . '/' . $bp->groups->slug . '/{$group_slug}/admin/' . esc_attr( $this->slug ) . '\">' . esc_attr( $this->name ) . '</a></li>";' ), 10, 2 );
 
-			/* Catch the edit screen and forward it to the plugin template */
+			// Make sure user has access
+			if ( !$bp->is_item_admin )
+				return false;
+
+			// Catch the edit screen and forward it to the plugin template
 			if ( $bp->current_component == $bp->groups->slug && 'admin' == $bp->current_action && $this->slug == $bp->action_variables[0] ) {
 				add_action( 'wp', array( &$this, 'edit_screen_save' ) );
 				add_action( 'groups_custom_edit_steps', array( &$this, 'edit_screen' ) );
@@ -1153,20 +1217,20 @@ class BP_Group_Extension {
 			}
 		}
 
-		/* When we are viewing a single group, add the group extension nav item */
-		if ( $this->visbility == 'public' || ( $this->visbility != 'public' && $bp->groups->current_group->user_has_access ) ) {
+		// When we are viewing a single group, add the group extension nav item
+		if ( $this->visibility == 'public' || ( $this->visibility != 'public' && $bp->groups->current_group->user_has_access ) ) {
 			if ( $this->enable_nav_item ) {
 				if ( $bp->current_component == $bp->groups->slug && $bp->is_single_item )
 					bp_core_new_subnav_item( array( 'name' => ( !$this->nav_item_name ) ? $this->name : $this->nav_item_name, 'slug' => $this->slug, 'parent_slug' => BP_GROUPS_SLUG, 'parent_url' => bp_get_group_permalink( $bp->groups->current_group ), 'position' => $this->nav_item_position, 'item_css_id' => 'nav-' . $this->slug, 'screen_function' => array( &$this, '_display_hook' ), 'user_has_access' => $this->enable_nav_item ) );
 
-				/* When we are viewing the extension display page, set the title and options title */
+				// When we are viewing the extension display page, set the title and options title
 				if ( $bp->current_component == $bp->groups->slug && $bp->is_single_item && $bp->current_action == $this->slug ) {
-					add_action( 'bp_template_content_header', create_function( '', 'echo "' . attribute_escape( $this->name ) . '";' ) );
-			 		add_action( 'bp_template_title', create_function( '', 'echo "' . attribute_escape( $this->name ) . '";' ) );
+					add_action( 'bp_template_content_header', create_function( '', 'echo "' . esc_attr( $this->name ) . '";' ) );
+			 		add_action( 'bp_template_title', create_function( '', 'echo "' . esc_attr( $this->name ) . '";' ) );
 				}
 			}
 
-			/* Hook the group home widget */
+			// Hook the group home widget
 			if ( $bp->current_component == $bp->groups->slug && $bp->is_single_item && ( !$bp->current_action || 'home' == $bp->current_action ) )
 				add_action( $this->display_hook, array( &$this, 'widget_display' ) );
 		}

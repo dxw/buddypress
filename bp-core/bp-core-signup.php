@@ -424,7 +424,7 @@ function bp_core_signup_user( $user_login, $user_password, $user_email, $usermet
 	if ( apply_filters( 'bp_core_signup_send_activation_key', true ) ) {
 		if ( !bp_core_is_multisite() ) {
 			$activation_key = wp_hash( $user_id );
-			update_usermeta( $user_id, 'activation_key', $activation_key );
+			update_user_meta( $user_id, 'activation_key', $activation_key );
 			bp_core_signup_send_validation_email( $user_id, $user_email, $activation_key );
 		}
 	}
@@ -474,7 +474,7 @@ function bp_core_activate_signup( $key ) {
 
 	} else {
 		/* Get the user_id based on the $key */
-		$user_id = $wpdb->get_var( $wpdb->prepare( "SELECT user_id FROM $wpdb->usermeta WHERE meta_value = %s", $key ) );
+		$user_id = $wpdb->get_var( $wpdb->prepare( "SELECT user_id FROM $wpdb->usermeta WHERE meta_key = 'activation_key' AND meta_value = %s", $key ) );
 
 		if ( empty( $user_id ) )
 			return new WP_Error( 'invalid_key', __( 'Invalid activation key', 'buddypress' ) );
@@ -487,14 +487,14 @@ function bp_core_activate_signup( $key ) {
 		wp_new_user_notification( $user_id );
 
 		/* Remove the activation key meta */
-		delete_usermeta( $user_id, 'activation_key' );
+		delete_user_meta( $user_id, 'activation_key' );
 	}
 
 	/* Update the user_url and display_name */
 	wp_update_user( array( 'ID' => $user_id, 'user_url' => bp_core_get_user_domain( $user_id, sanitize_title( $user_login ), $user_login ), 'display_name' => bp_core_get_user_displayname( $user_id ) ) );
 
 	/* Add a last active entry */
-	update_usermeta( $user_id, 'last_activity', gmdate( "Y-m-d H:i:s" ) );
+	update_user_meta( $user_id, 'last_activity', bp_core_current_time() );
 
 	/* Set the password on multisite installs */
 	if ( bp_core_is_multisite() && !empty( $user['meta']['password'] ) )
@@ -537,16 +537,16 @@ function bp_core_map_user_registration( $user_id ) {
 		return false;
 
 	/* Add a last active entry */
-	update_usermeta( $user_id, 'last_activity', gmdate( "Y-m-d H:i:s" ) );
+	update_user_meta( $user_id, 'last_activity', bp_core_current_time() );
 
 	/* Add the user's fullname to Xprofile */
 	if ( function_exists( 'xprofile_set_field_data' ) ) {
-		$firstname = get_usermeta( $user_id, 'first_name' );
-		$lastname = ' ' . get_usermeta( $user_id, 'last_name' );
+		$firstname = get_user_meta( $user_id, 'first_name', true );
+		$lastname = ' ' . get_user_meta( $user_id, 'last_name', true );
 		$name = $firstname . $lastname;
 
 		if ( empty( $name ) || ' ' == $name )
-			$name = get_usermeta( $user_id, 'nickname' );
+			$name = get_user_meta( $user_id, 'nickname', true );
 
 		xprofile_set_field_data( 1, $user_id, $name );
 	}
@@ -574,7 +574,7 @@ function bp_core_signup_avatar_upload_dir() {
 
 function bp_core_signup_send_validation_email( $user_id, $user_email, $key ) {
 	$activate_url = bp_get_activation_page() ."?key=$key";
-	$activate_url = clean_url( $activate_url );
+	$activate_url = esc_url( $activate_url );
 	$admin_email = get_site_option( "admin_email" );
 
 	if ( empty( $admin_email ) )

@@ -75,7 +75,7 @@ Class BP_Blogs_Blog {
 		if ( !$bp->blogs )
 			bp_blogs_setup_globals();
 
-		if ( !is_user_logged_in() || ( !is_site_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
+		if ( !is_user_logged_in() || ( !is_super_admin() && ( $user_id != $bp->loggedin_user->id ) ) )
 			$hidden_sql = "AND wb.public = 1";
 
 		if ( $limit && $page )
@@ -209,7 +209,7 @@ Class BP_Blogs_Blog {
 			$user_id = $bp->displayed_user->id;
 
 		// If the user is logged in return the blog count including their hidden blogs.
-		if ( ( is_user_logged_in() && $user_id == $bp->loggedin_user->id ) || is_site_admin() )
+		if ( ( is_user_logged_in() && $user_id == $bp->loggedin_user->id ) || is_super_admin() )
 			return $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT b.blog_id) FROM {$bp->blogs->table_name} b LEFT JOIN {$wpdb->base_prefix}blogs wb ON b.blog_id = wb.blog_id WHERE wb.deleted = 0 AND wb.spam = 0 AND wb.mature = 0 AND wb.archived = '0' AND user_id = %d", $user_id) );
 		else
 			return $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT b.blog_id) FROM {$bp->blogs->table_name} b LEFT JOIN {$wpdb->base_prefix}blogs wb ON b.blog_id = wb.blog_id WHERE wb.public = 1 AND wb.deleted = 0 AND wb.spam = 0 AND wb.mature = 0 AND wb.archived = '0' AND user_id = %d", $user_id) );
@@ -223,7 +223,7 @@ Class BP_Blogs_Blog {
 
 		$filter = like_escape( $wpdb->escape( $filter ) );
 
-		if ( !is_site_admin() )
+		if ( !is_super_admin() )
 			$hidden_sql = "AND wb.public = 1";
 
 		if ( $limit && $page )
@@ -241,7 +241,7 @@ Class BP_Blogs_Blog {
 		if ( !$bp->blogs )
 			bp_blogs_setup_globals();
 
-		if ( !is_site_admin() )
+		if ( !is_super_admin() )
 			$hidden_sql = "AND wb.public = 1";
 
 		if ( $limit && $page )
@@ -261,7 +261,7 @@ Class BP_Blogs_Blog {
 
 		$letter = like_escape( $wpdb->escape( $letter ) );
 
-		if ( !is_site_admin() )
+		if ( !is_super_admin() )
 			$hidden_sql = "AND wb.public = 1";
 
 		if ( $limit && $page )
@@ -279,8 +279,10 @@ Class BP_Blogs_Blog {
 		if ( empty( $blog_ids ) )
 			return $paged_blogs;
 
-		for ( $i = 0; $i < count( $paged_blogs ); $i++ )
-			$paged_blogs[$i]->latest_post = $wpdb->get_row( "SELECT post_title, guid FROM {$wpdb->base_prefix}" . $paged_blogs[$i]->blog_id . "_posts WHERE post_status = 'publish' AND post_type = 'post' AND id != 1 ORDER BY id DESC LIMIT 1" );
+		for ( $i = 0; $i < count( $paged_blogs ); $i++ ) {
+			$blog_prefix = $wpdb->get_blog_prefix( $paged_blogs[$i]->blog_id );
+			$paged_blogs[$i]->latest_post = $wpdb->get_row( "SELECT post_title, guid FROM {$blog_prefix}posts WHERE post_status = 'publish' AND post_type = 'post' AND id != 1 ORDER BY id DESC LIMIT 1" );
+		}
 
 		/* Fetch the blog description for each blog (as it may be empty we can't fetch it in the main query). */
 		$blog_descs = $wpdb->get_results( $wpdb->prepare( "SELECT blog_id, meta_value as description FROM {$bp->blogs->table_name_blogmeta} WHERE meta_key = 'description' AND blog_id IN ( {$blog_ids} )" ) );

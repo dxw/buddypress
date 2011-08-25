@@ -179,7 +179,7 @@ function bp_field_css_class( $class = false ) {
 		$css_classes = array();
 
 		if ( $class )
-			$css_classes[] = sanitize_title( attribute_escape( $class ) );
+			$css_classes[] = sanitize_title( esc_attr( $class ) );
 
 		/* Set a class with the field ID */
 		$css_classes[] = 'field_' . $profile_template->field->id;
@@ -376,7 +376,7 @@ function bp_the_profile_field_options( $args = '' ) {
 					$html .= '<option value="">--------</option>';
 
 				for ( $k = 0; $k < count($options); $k++ ) {
-					$option_values = maybe_unserialize( BP_XProfile_ProfileData::get_value_byid( $options[$k]->parent_id ) );
+					$option_values = BP_XProfile_ProfileData::get_value_byid( $options[$k]->parent_id );
 					$option_values = (array)$option_values;
 
 					/* Check for updated posted values, but errors preventing them from being saved first time */
@@ -393,7 +393,7 @@ function bp_the_profile_field_options( $args = '' ) {
 						$selected = '';
 					}
 
-					$html .= apply_filters( 'bp_get_the_profile_field_options_select', '<option' . $selected . ' value="' . attribute_escape( $options[$k]->name ) . '">' . attribute_escape( $options[$k]->name ) . '</option>', $options[$k] );
+					$html .= apply_filters( 'bp_get_the_profile_field_options_select', '<option' . $selected . ' value="' . esc_attr( $options[$k]->name ) . '">' . esc_attr( $options[$k]->name ) . '</option>', $options[$k] );
 				}
 				break;
 
@@ -415,7 +415,7 @@ function bp_the_profile_field_options( $args = '' ) {
 						$selected = '';
 					}
 
-					$html .= apply_filters( 'bp_get_the_profile_field_options_radio', '<label><input' . $selected . ' type="radio" name="field_' . $field->id . '" id="option_' . $options[$k]->id . '" value="' . attribute_escape( $options[$k]->name ) . '"> ' . attribute_escape( $options[$k]->name ) . '</label>', $options[$k] );
+					$html .= apply_filters( 'bp_get_the_profile_field_options_radio', '<label><input' . $selected . ' type="radio" name="field_' . $field->id . '" id="option_' . $options[$k]->id . '" value="' . esc_attr( $options[$k]->name ) . '"> ' . esc_attr( $options[$k]->name ) . '</label>', $options[$k] );
 				}
 
 				$html .= '</div>';
@@ -440,7 +440,7 @@ function bp_the_profile_field_options( $args = '' ) {
 						}
 					}
 
-					$html .= apply_filters( 'bp_get_the_profile_field_options_checkbox', '<label><input' . $selected . ' type="checkbox" name="field_' . $field->id . '[]" id="field_' . $options[$k]->id . '_' . $k . '" value="' . attribute_escape( $options[$k]->name ) . '"> ' . attribute_escape( $options[$k]->name ) . '</label>', $options[$k] );
+					$html .= apply_filters( 'bp_get_the_profile_field_options_checkbox', '<label><input' . $selected . ' type="checkbox" name="field_' . $field->id . '[]" id="field_' . $options[$k]->id . '_' . $k . '" value="' . esc_attr( $options[$k]->name ) . '"> ' . esc_attr( $options[$k]->name ) . '</label>', $options[$k] );
 					$selected = '';
 				}
 				break;
@@ -472,7 +472,7 @@ function bp_the_profile_field_options( $args = '' ) {
 
 				switch ( $type ) {
 					case 'day':
-						$html .= '<option value=""' . attribute_escape( $default_select ) . '>--</option>';
+						$html .= '<option value=""' . esc_attr( $default_select ) . '>--</option>';
 
 						for ( $i = 1; $i < 32; $i++ ) {
 							if ( $day == $i ) {
@@ -493,7 +493,7 @@ function bp_the_profile_field_options( $args = '' ) {
 								 __( 'October', 'buddypress' ), __( 'November', 'buddypress' ), __( 'December', 'buddypress' )
 								);
 
-						$html .= '<option value=""' . attribute_escape( $default_select ) . '>------</option>';
+						$html .= '<option value=""' . esc_attr( $default_select ) . '>------</option>';
 
 						for ( $i = 0; $i < 12; $i++ ) {
 							if ( $month == $eng_months[$i] ) {
@@ -507,7 +507,7 @@ function bp_the_profile_field_options( $args = '' ) {
 						break;
 
 					case 'year':
-						$html .= '<option value=""' . attribute_escape( $default_select ) . '>----</option>';
+						$html .= '<option value=""' . esc_attr( $default_select ) . '>----</option>';
 
 						for ( $i = date( 'Y', time() ); $i > 1899; $i-- ) {
 							if ( $year == $i ) {
@@ -582,7 +582,7 @@ function bp_profile_group_tabs() {
 		}
 
 		if ( $groups[$i]->fields )
-			echo '<li' . $selected . '><a href="' . $bp->displayed_user->domain . $bp->profile->slug . '/edit/group/' . $groups[$i]->id . '">' . attribute_escape( $groups[$i]->name ) . '</a></li>';
+			echo '<li' . $selected . '><a href="' . $bp->displayed_user->domain . $bp->profile->slug . '/edit/group/' . $groups[$i]->id . '">' . esc_attr( $groups[$i]->name ) . '</a></li>';
 	}
 
 	do_action( 'xprofile_profile_group_tabs' );
@@ -646,7 +646,7 @@ function bp_profile_last_updated() {
 	function bp_get_profile_last_updated() {
 		global $bp;
 
-		$last_updated = get_usermeta( $bp->displayed_user->id, 'profile_last_updated' );
+		$last_updated = get_user_meta( $bp->displayed_user->id, 'profile_last_updated', true );
 
 		if ( $last_updated )
 			return apply_filters( 'bp_get_profile_last_updated', sprintf( __('Profile updated %s ago', 'buddypress'), bp_core_time_since( strtotime( $last_updated ) ) ) );
@@ -685,12 +685,16 @@ function bp_get_user_has_avatar() {
 function bp_edit_profile_button() {
 	global $bp;
 
-	?>
-	<div class="generic-button">
-		<a class="edit" title="<?php _e( 'Edit Profile', 'buddypress' ) ?>" href="<?php echo $bp->displayed_user->domain . $bp->profile->slug ?>/edit"><?php _e( 'Edit Profile', 'buddypress' ) ?></a>
-	</div>
-	<?php
+	bp_button( array (
+		'id'                => 'edit_profile',
+		'component'         => 'xprofile',
+		'must_be_logged_in' => true,
+		'block_self'        => true,
+		'link_href'         => trailingslashit( $bp->displayed_user->domain . $bp->profile->slug . '/edit' ),
+		'link_class'        => 'edit',
+		'link_text'         => __( 'Edit Profile', 'buddypress' ),
+		'link_title'        => __( 'Edit Profile', 'buddypress' ),
+	) );
 }
-
 
 ?>

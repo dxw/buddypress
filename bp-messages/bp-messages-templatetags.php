@@ -21,53 +21,57 @@ Class BP_Messages_Box_Template {
 
 	function bp_messages_box_template( $user_id, $box, $per_page, $max, $type ) {
 		$this->pag_page = isset( $_GET['mpage'] ) ? intval( $_GET['mpage'] ) : 1;
-		$this->pag_num = isset( $_GET['num'] ) ? intval( $_GET['num'] ) : $per_page;
+		$this->pag_num  = isset( $_GET['num'] ) ? intval( $_GET['num'] ) : $per_page;
 
-		$this->user_id = $user_id;
-		$this->box = $box;
-		$this->type = $type;
+		$this->user_id  = $user_id;
+		$this->box      = $box;
+		$this->type     = $type;
 
-		if ( 'notices' == $this->box )
+		if ( 'notices' == $this->box ) {
 			$this->threads = BP_Messages_Notice::get_notices();
-		else {
+		} else {
 			$threads = BP_Messages_Thread::get_current_threads_for_user( $this->user_id, $this->box, $this->type, $this->pag_num, $this->pag_page );
 
-			$this->threads = $threads['threads'];
+			$this->threads            = $threads['threads'];
 			$this->total_thread_count = $threads['total'];
 		}
 
 		if ( !$this->threads ) {
-			$this->thread_count = 0;
+			$this->thread_count       = 0;
 			$this->total_thread_count = 0;
 		} else {
 			$total_notice_count = BP_Messages_Notice::get_total_notice_count();
 
 			if ( !$max || $max >= (int)$total_notice_count ) {
-				if ( 'notices' == $this->box )
+				if ( 'notices' == $this->box ) {
 					$this->total_thread_count = (int)$total_notice_count;
+				}
 			} else {
 				$this->total_thread_count = (int)$max;
 			}
 
 			if ( $max ) {
-				if ( $max >= count($this->threads) )
+				if ( $max >= count($this->threads) ) {
 					$this->thread_count = count($this->threads);
-				else
+				} else {
 					$this->thread_count = (int)$max;
+				}
 			} else {
 				$this->thread_count = count($this->threads);
 			}
 		}
 
-		$this->pag_links = paginate_links( array(
-			'base' => add_query_arg( 'mpage', '%#%' ),
-			'format' => '',
-			'total' => ceil($this->total_thread_count / $this->pag_num),
-			'current' => $this->pag_page,
-			'prev_text' => '&larr;',
-			'next_text' => '&rarr;',
-			'mid_size' => 1
-		));
+		if ( (int)$this->total_thread_count && (int)$this->pag_num ) {
+			$this->pag_links = paginate_links( array(
+				'base'      => add_query_arg( 'mpage', '%#%' ),
+				'format'    => '',
+				'total'     => ceil( (int)$this->total_thread_count / (int)$this->pag_num ),
+				'current'   => $this->pag_page,
+				'prev_text' => '&larr;',
+				'next_text' => '&rarr;',
+				'mid_size'  => 1
+			) );
+		}
 	}
 
 	function has_threads() {
@@ -157,7 +161,7 @@ function bp_has_message_threads( $args = '' ) {
 	$r = wp_parse_args( $args, $defaults );
 	extract( $r, EXTR_SKIP );
 
-	if ( 'notices' == $bp->current_action && !is_site_admin() ) {
+	if ( 'notices' == $bp->current_action && !is_super_admin() ) {
 		wp_redirect( $bp->displayed_user->id );
 	} else {
 		if ( 'inbox' == $bp->current_action )
@@ -245,6 +249,21 @@ function bp_message_thread_delete_link() {
 		return apply_filters( 'bp_get_message_thread_delete_link', wp_nonce_url( $bp->loggedin_user->domain . $bp->messages->slug . '/' . $bp->current_action . '/delete/' . $messages_template->thread->thread_id, 'messages_delete_thread' ) );
 	}
 
+function bp_message_css_class() {
+	echo bp_get_message_css_class();
+}
+
+	function bp_get_message_css_class() {
+		global $messages_template;
+
+		$class = false;
+
+		if ( $messages_template->current_thread % 2 == 1 )
+			$class .= 'alt';
+
+		return apply_filters( 'bp_get_message_css_class', trim( $class ) );
+	}
+
 function bp_message_thread_has_unread() {
 	global $messages_template;
 
@@ -272,7 +291,7 @@ function bp_message_thread_last_post_date() {
 	function bp_get_message_thread_last_post_date() {
 		global $messages_template;
 
-		return apply_filters( 'bp_get_message_thread_last_post_date', bp_format_time( strtotime( $messages_template->thread->last_message_date ) ) );
+		return apply_filters( 'bp_get_message_thread_last_post_date', bp_format_time( get_date_from_gmt( $messages_template->thread->last_message_date, 'U' ) ) );
 	}
 
 function bp_message_thread_avatar() {
@@ -323,7 +342,7 @@ function bp_messages_form_action() {
 	function bp_get_messages_form_action() {
 		global $bp;
 
-		return apply_filters( 'bp_get_messages_form_action', $bp->loggedin_user->domain . $bp->messages->slug . '/' . $bp->current_action . '/' . $bp->action_variables[0] . '/' );
+		return apply_filters( 'bp_get_messages_form_action', trailingslashit( $bp->loggedin_user->domain . $bp->messages->slug . '/' . $bp->current_action . '/' . $bp->action_variables[0] . '/' ) );
 	}
 
 function bp_messages_username_value() {
@@ -456,7 +475,7 @@ function bp_message_get_notices() {
 	if ( empty( $notice ) )
 		return false;
 
-	$closed_notices = get_usermeta( $userdata->ID, 'closed_notices' );
+	$closed_notices = get_user_meta( $userdata->ID, 'closed_notices', true );
 
 	if ( !$closed_notices )
 		$closed_notices = array();
@@ -482,19 +501,41 @@ function bp_send_private_message_link() {
 	function bp_get_send_private_message_link() {
 		global $bp;
 
-		return apply_filters( 'bp_get_send_public_message_link', $bp->loggedin_user->domain . $bp->messages->slug . '/compose/?r=' . bp_core_get_username( $bp->displayed_user->user_id, $bp->displayed_user->userdata->user_nicename, $bp->displayed_user->userdata->user_login ) );
+		if ( bp_is_my_profile() || !is_user_logged_in() )
+			return false;
+
+		return apply_filters( 'bp_get_send_private_message_link', wp_nonce_url( $bp->loggedin_user->domain . $bp->messages->slug . '/compose/?r=' . bp_core_get_username( $bp->displayed_user->user_id, $bp->displayed_user->userdata->user_nicename, $bp->displayed_user->userdata->user_login ) ) );
 	}
+
+/**
+ * bp_send_private_message_button()
+ *
+ * Explicitly named function to avoid confusion with public messages.
+ *
+ * @uses bp_get_send_message_button()
+ * @since 1.2.6
+ */
+function bp_send_private_message_button() {
+	echo bp_get_send_message_button();
+}
 
 function bp_send_message_button() {
 	echo bp_get_send_message_button();
 }
 	function bp_get_send_message_button() {
-		global $bp;
-
-		if ( bp_is_my_profile() || !is_user_logged_in() )
-			return false;
-
-		return apply_filters( 'bp_get_send_message_button', '<div class="generic-button"><a class="send-message" title="' . __( 'Send Message', 'buddypress' ) . '" href="' . $bp->loggedin_user->domain . $bp->messages->slug . '/compose/?r=' . bp_core_get_username( $bp->displayed_user->user_id, $bp->displayed_user->userdata->user_nicename, $bp->displayed_user->userdata->user_login ) . '">' . __( 'Send Message', 'buddypress' ) . '</a></div>' );
+		return apply_filters( 'bp_get_send_message_button',
+			bp_get_button( array(
+				'id'                => 'private_message',
+				'component'         => 'messages',
+				'must_be_logged_in' => true,
+				'block_self'        => true,
+				'wrapper_id'        => 'send-private-message',
+				'link_href'         => bp_get_send_private_message_link(),
+				'link_class'        => 'send-message',
+				'link_title'        => __( 'Send a private message to this user.', 'buddypress' ),
+				'link_text'         => __( 'Send Private Message', 'buddypress' )
+			) )
+		);
 	}
 
 function bp_message_loading_image_src() {

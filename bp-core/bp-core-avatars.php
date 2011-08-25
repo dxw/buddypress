@@ -477,7 +477,12 @@ function bp_core_avatar_handle_crop( $args = '' ) {
  * @return <type>
  */
 function bp_core_fetch_avatar_filter( $avatar, $user, $size, $default, $alt ) {
-
+	global $pagenow;
+	
+	// Do not filter if inside WordPress options page
+	if ( 'options-discussion.php' == $pagenow )
+		return $avatar;
+	
 	// If passed an object, assume $user->user_id
 	if ( is_object( $user ) )
 		$id = $user->user_id;
@@ -540,7 +545,7 @@ function bp_core_avatar_upload_path() {
 
 	// If multisite, and current blog does not match root blog, make adjustments
 	if ( bp_core_is_multisite() && BP_ROOT_BLOG != $current_blog->blog_id )
-		$upload_dir['basedir'] = WP_CONTENT_DIR . '/blogs.dir/' . BP_ROOT_BLOG . '/files/';
+		$upload_dir['basedir'] = get_blog_option( BP_ROOT_BLOG, 'upload_path' );
 
 	return apply_filters( 'bp_core_avatar_upload_path', $upload_dir['basedir'] );
 }

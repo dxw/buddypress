@@ -36,23 +36,26 @@ class BP_Blogs_Template {
 		$this->blogs = $this->blogs['blogs'];
 
 		if ( $max ) {
-			if ( $max >= count($this->blogs) )
-				$this->blog_count = count($this->blogs);
-			else
+			if ( $max >= count($this->blogs) ) {
+				$this->blog_count = count( $this->blogs );
+			} else {
 				$this->blog_count = (int)$max;
+			}
 		} else {
-			$this->blog_count = count($this->blogs);
+			$this->blog_count = count( $this->blogs );
 		}
 
-		$this->pag_links = paginate_links( array(
-			'base' => add_query_arg( 'bpage', '%#%' ),
-			'format' => '',
-			'total' => ceil( (int) $this->total_blog_count / (int) $this->pag_num ),
-			'current' => (int) $this->pag_page,
-			'prev_text' => '&larr;',
-			'next_text' => '&rarr;',
-			'mid_size' => 1
-		));
+		if ( (int)$this->total_blog_count && (int)$this->pag_num ) {
+			$this->pag_links = paginate_links( array(
+				'base'      => add_query_arg( 'bpage', '%#%' ),
+				'format'    => '',
+				'total'     => ceil( (int)$this->total_blog_count / (int)$this->pag_num ),
+				'current'   => (int)$this->pag_page,
+				'prev_text' => '&larr;',
+				'next_text' => '&rarr;',
+				'mid_size'  => 1
+			) );
+		}
 	}
 
 	function has_blogs() {
@@ -267,15 +270,15 @@ function bp_blog_latest_post() {
 
 function bp_blog_hidden_fields() {
 	if ( isset( $_REQUEST['s'] ) ) {
-		echo '<input type="hidden" id="search_terms" value="' . attribute_escape( $_REQUEST['s'] ). '" name="search_terms" />';
+		echo '<input type="hidden" id="search_terms" value="' . esc_attr( $_REQUEST['s'] ). '" name="search_terms" />';
 	}
 
 	if ( isset( $_REQUEST['letter'] ) ) {
-		echo '<input type="hidden" id="selected_letter" value="' . attribute_escape( $_REQUEST['letter'] ) . '" name="selected_letter" />';
+		echo '<input type="hidden" id="selected_letter" value="' . esc_attr( $_REQUEST['letter'] ) . '" name="selected_letter" />';
 	}
 
 	if ( isset( $_REQUEST['blogs_search'] ) ) {
-		echo '<input type="hidden" id="search_terms" value="' . attribute_escape( $_REQUEST['blogs_search'] ) . '" name="search_terms" />';
+		echo '<input type="hidden" id="search_terms" value="' . esc_attr( $_REQUEST['blogs_search'] ) . '" name="search_terms" />';
 	}
 }
 
@@ -344,7 +347,7 @@ function bp_show_blog_signup_form($blogname = '', $blog_title = '', $errors = ''
 		<form class="standard-form" id="setupform" method="post" action="">
 
 			<input type="hidden" name="stage" value="gimmeanotherblog" />
-			<?php do_action( "signup_hidden_fields" ); ?>
+			<?php do_action( 'signup_hidden_fields' ); ?>
 
 			<?php bp_blogs_signup_blog($blogname, $blog_title, $errors); ?>
 			<p>
@@ -500,5 +503,42 @@ function bp_directory_blogs_search_form() {
 	</form>
 <?php
 }
+
+/**
+ * bp_blogs_visit_blog_button()
+ *
+ * Output button for visiting a blog in a loop
+ *
+ * @param array $args Custom button properties
+ */
+function bp_blogs_visit_blog_button( $args = '' ) {
+	echo bp_get_blogs_visit_blog_button( $args );
+}
+	/**
+	 * bp_get_blogs_visit_blog_button()
+	 *
+	 * Return button for visiting a blog in a loop
+	 *
+	 * @param array $args Custom button properties
+	 * @return string
+	 */
+	function bp_get_blogs_visit_blog_button( $args = '' ) {
+		$defaults = array(
+			'id'                => 'visit_blog',
+			'component'         => 'blogs',
+			'must_be_logged_in' => false,
+			'block_self'        => false,
+			'wrapper_class'     => 'blog-button visit',
+			'link_href'         => bp_get_blog_permalink(),
+			'link_class'        => 'visit',
+			'link_text'         => __( 'Visit Blog', 'buddypress' ),
+			'link_title'        => __( 'Visit Blog', 'buddypress' ),
+		);
+
+		$button = wp_parse_args( $args, $defaults );
+
+		// Filter and return the HTML button
+		return bp_get_button( apply_filters( 'bp_get_blogs_visit_blog_button', $button ) );
+	}
 
 ?>

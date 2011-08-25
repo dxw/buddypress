@@ -50,7 +50,7 @@ class BP_Core_User {
 	 * @uses bp_core_get_userurl() Returns the URL with no HTML markup for a user based on their user id
 	 * @uses bp_core_get_userlink() Returns a HTML formatted link for a user with the user's full name as the link text
 	 * @uses bp_core_get_user_email() Returns the email address for the user based on user ID
-	 * @uses get_usermeta() WordPress function returns the value of passed usermeta name from usermeta table
+	 * @uses get_user_meta() WordPress function returns the value of passed usermeta name from usermeta table
 	 * @uses bp_core_fetch_avatar() Returns HTML formatted avatar for a user
 	 * @uses bp_profile_last_updated_date() Returns the last updated date for a user.
 	 */
@@ -60,14 +60,14 @@ class BP_Core_User {
 
 		if ( $this->profile_data ) {
 			$this->user_url = bp_core_get_user_domain( $this->id, $this->profile_data['user_nicename'], $this->profile_data['user_login'] );
-			$this->fullname = attribute_escape( $this->profile_data[BP_XPROFILE_FULLNAME_FIELD_NAME]['field_data'] );
+			$this->fullname = esc_attr( $this->profile_data[BP_XPROFILE_FULLNAME_FIELD_NAME]['field_data'] );
 			$this->user_link = "<a href='{$this->user_url}' title='{$this->fullname}'>{$this->fullname}</a>";
-			$this->email = attribute_escape( $this->profile_data['user_email'] );
+			$this->email = esc_attr( $this->profile_data['user_email'] );
 		} else {
 			$this->user_url = bp_core_get_user_domain( $this->id );
 			$this->user_link = bp_core_get_userlink( $this->id );
-			$this->fullname = attribute_escape( bp_core_get_user_displayname( $this->id ) );
-			$this->email = attribute_escape( bp_core_get_user_email( $this->id ) );
+			$this->fullname = esc_attr( bp_core_get_user_displayname( $this->id ) );
+			$this->email = esc_attr( bp_core_get_user_email( $this->id ) );
 		}
 
 		/* Cache a few things that are fetched often */
@@ -79,7 +79,7 @@ class BP_Core_User {
 		$this->avatar_thumb = bp_core_fetch_avatar( array( 'item_id' => $this->id, 'type' => 'thumb' ) );
 		$this->avatar_mini = bp_core_fetch_avatar( array( 'item_id' => $this->id, 'type' => 'thumb', 'width' => 30, 'height' => 30 ) );
 
-		$this->last_active = bp_core_get_last_activity( get_usermeta( $this->id, 'last_activity' ), __( 'active %s ago', 'buddypress' ) );
+		$this->last_active = bp_core_get_last_activity( get_user_meta( $this->id, 'last_activity', true ), __( 'active %s ago', 'buddypress' ) );
 	}
 
 	function populate_extras() {
@@ -190,7 +190,8 @@ class BP_Core_User {
 			$sql['pagination'] = $wpdb->prepare( "LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 
 		/* Get paginated results */
-		$paged_users = $wpdb->get_results( join( ' ', (array)$sql ) );
+		$paged_users_sql = apply_filters( 'bp_core_get_paged_users_sql', join( ' ', (array)$sql ), $sql );
+		$paged_users     = $wpdb->get_results( $paged_users_sql );
 
 		/* Re-jig the SQL so we can get the total user count */
 		unset( $sql['select_main'] );
@@ -210,7 +211,8 @@ class BP_Core_User {
 		array_unshift( $sql, "SELECT COUNT(DISTINCT u.ID)" );
 
 		/* Get total user results */
-		$total_users = $wpdb->get_var( join( ' ', (array)$sql ) );
+		$total_users_sql = apply_filters( 'bp_core_get_total_users_sql', join( ' ', (array)$sql ), $sql );
+		$total_users     = $wpdb->get_var( $total_users_sql );
 
 		/***
 		 * Lets fetch some other useful data in a separate queries, this will be faster than querying the data for every user in a list.
@@ -235,8 +237,16 @@ class BP_Core_User {
 		if ( $limit && $page )
 			$pag_sql = $wpdb->prepare( " LIMIT %d, %d", intval( ( $page - 1 ) * $limit), intval( $limit ) );
 
-		if ( strlen($letter) > 1 || is_numeric($letter) || !$letter )
-			return false;
+		// Multibyte compliance
+		if ( function_exists( 'mb_strlen' ) ) {
+			if ( mb_strlen( $letter, 'UTF-8' ) > 1 || is_numeric( $letter ) || !$letter ) {
+				return false;
+			}
+		} else {
+			if ( strlen( $letter ) > 1 || is_numeric( $letter ) || !$letter ) {
+				return false;
+			}
+		}
 
 		$letter = like_escape( $wpdb->escape( $letter ) );
 		$status_sql = bp_core_get_status_sql( 'u.' );
@@ -424,10 +434,10 @@ class BP_Core_Notification {
 
 		if ( $this->id ) {
 			// Update
-			$sql = $wpdb->prepare( "UPDATE {$bp->core->table_name_notifications} SET item_id = %d, secondary_item_id = %d, user_id = %d, component_name = %s, component_action = %d, date_notified = FROM_UNIXTIME(%d), is_new = %d ) WHERE id = %d", $this->item_id, $this->secondary_item_id, $this->user_id, $this->component_name, $this->component_action, $this->date_notified, $this->is_new, $this->id );
+			$sql = $wpdb->prepare( "UPDATE {$bp->core->table_name_notifications} SET item_id = %d, secondary_item_id = %d, user_id = %d, component_name = %s, component_action = %d, date_notified = %s, is_new = %d ) WHERE id = %d", $this->item_id, $this->secondary_item_id, $this->user_id, $this->component_name, $this->component_action, $this->date_notified, $this->is_new, $this->id );
 		} else {
 			// Save
-			$sql = $wpdb->prepare( "INSERT INTO {$bp->core->table_name_notifications} ( item_id, secondary_item_id, user_id, component_name, component_action, date_notified, is_new ) VALUES ( %d, %d, %d, %s, %s, FROM_UNIXTIME(%d), %d )", $this->item_id, $this->secondary_item_id, $this->user_id, $this->component_name, $this->component_action, $this->date_notified, $this->is_new );
+			$sql = $wpdb->prepare( "INSERT INTO {$bp->core->table_name_notifications} ( item_id, secondary_item_id, user_id, component_name, component_action, date_notified, is_new ) VALUES ( %d, %d, %d, %s, %s, %s, %d )", $this->item_id, $this->secondary_item_id, $this->user_id, $this->component_name, $this->component_action, $this->date_notified, $this->is_new );
 		}
 
 		if ( !$result = $wpdb->query( $sql ) )
@@ -485,5 +495,158 @@ class BP_Core_Notification {
 	}
 }
 
+/**
+ * BP_Button
+ *
+ * API to create BuddyPress buttons
+ *
+ * @package BuddyPress Core
+ * @since 1.2.6
+ */
+class BP_Button {
+
+	// Button properties
+	var $id;
+	var $component;
+	var $must_be_logged_in;
+	var $block_self;
+
+	// Wrapper div
+	var $wrapper_class;
+	var $wrapper_id;
+
+	// Button
+	var $link_href;
+	var $link_class;
+	var $link_id;
+	var $link_rel;
+	var $link_title;
+	var $link_text;
+
+	// HTML result
+	var $contents;
+
+	/**
+	 * bp_button()
+	 *
+	 * Builds the button based on passed parameters:
+	 *
+	 * component: Which component this button is for
+	 * must_be_logged_in: Button only appears for logged in users
+	 * block_self: Button will not appear when viewing your own profile.
+	 * wrapper_id: The DOM ID of the button wrapper
+	 * wrapper_class: The DOM class of the button wrapper
+	 * link_href: The destination link of the button
+	 * link_title: Title of the button
+	 * link_id: The DOM ID of the button
+	 * link_class: The DOM class of the button
+	 * link_rel: The DOM rel of the button
+	 * link_text: The contents of the button
+	 *
+	 * @param array $args
+	 * @return bool False if not allowed
+	 */
+	function bp_button( $args = '' ) {
+
+		$defaults = array(
+			'id'                => '',
+			'component'         => 'core',
+			'must_be_logged_in' => true,
+			'block_self'        => true,
+
+			'wrapper_id'        => '',
+			'wrapper_class'     => '',
+
+			'link_href'         => '',
+			'link_title'        => '',
+			'link_id'           => '',
+			'link_class'        => '',
+			'link_rel'          => '',
+			'link_text'         => '',
+		);
+
+		$r = wp_parse_args( $args, $defaults );
+		extract( $r, EXTR_SKIP );
+
+		// Required button properties
+		$this->id                = $id;
+		$this->component         = $component;
+		$this->must_be_logged_in = (bool)$must_be_logged_in;
+		$this->block_self        = (bool)$block_self;
+
+		// $id and $component are required
+		if ( empty( $id ) || empty( $component ) )
+			return false;
+
+		// No button if component is not active
+		if ( !bp_is_active( $this->component ) )
+			return false;
+
+		// No button for guests if must be logged in
+		if ( true == $this->must_be_logged_in && !is_user_logged_in() )
+			return false;
+
+		// No button if viewing your own profile
+		if ( true == $this->block_self && bp_is_my_profile() )
+			return false;
+
+		// Wrapper properties
+		if ( !empty( $wrapper_id ) )
+			$this->wrapper_id    = ' id="' . $wrapper_id . '"';
+
+		if ( !empty( $wrapper_class ) )
+			$this->wrapper_class = ' class="generic-button ' . $wrapper_class . '"';
+		else
+			$this->wrapper_class = ' class="generic-button"';
+
+		// Link properties
+		if ( !empty( $link_id ) )
+			$this->link_id       = ' id="' . $link_id . '"';
+
+		if ( !empty( $link_href ) )
+			$this->link_href     = ' href="' . $link_href . '"';
+
+		if ( !empty( $link_title ) )
+			$this->link_title    = ' title="' . $link_title . '"';
+
+		if ( !empty( $link_rel ) )
+			$this->link_rel      = ' rel="' . $link_rel . '"';
+
+		if ( !empty( $link_class ) )
+			$this->link_class    = ' class="' . $link_class . '"';
+
+		if ( !empty( $link_text ) )
+			$this->link_text     = $link_text;
+
+		// Build the button
+		$this->contents  = '<div' . $this->wrapper_class . $this->wrapper_id . '>';
+		$this->contents .= '<a'. $this->link_href . $this->link_title . $this->link_id . $this->link_rel . $this->link_class . '>' . $this->link_text . '</a>';
+		$this->contents .= '</div>';
+
+		// Allow button to be manipulated externally
+		$this->contents = apply_filters( 'bp_button_' . $component . '_' . $id, $this->contents, $this );
+	}
+
+	/**
+	 * contents()
+	 *
+	 * Return contents of button
+	 *
+	 * @return string
+	 */
+	function contents() {
+		return $this->contents;
+	}
+
+	/**
+	 * display()
+	 *
+	 * Output contents of button
+	 */
+	function display() {
+		if ( !empty( $this->contents ) )
+			echo $this->contents;
+	}
+}
 
 ?>

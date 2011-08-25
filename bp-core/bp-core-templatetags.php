@@ -21,14 +21,13 @@ class BP_Core_Members_Template {
 		global $bp;
 
 		$this->pag_page = isset( $_REQUEST['upage'] ) ? intval( $_REQUEST['upage'] ) : $page_number;
-		$this->pag_num = isset( $_REQUEST['num'] ) ? intval( $_REQUEST['num'] ) : $per_page;
-		$this->type = $type;
+		$this->pag_num  = isset( $_REQUEST['num'] ) ? intval( $_REQUEST['num'] ) : $per_page;
+		$this->type     = $type;
 
-		if ( isset( $_REQUEST['letter'] ) && '' != $_REQUEST['letter'] ) {
+		if ( isset( $_REQUEST['letter'] ) && '' != $_REQUEST['letter'] )
 			$this->members = BP_Core_User::get_users_by_letter( $_REQUEST['letter'], $this->pag_num, $this->pag_page, $populate_extras );
-		} else {
+		else
 			$this->members = bp_core_get_users( array( 'type' => $this->type, 'per_page' => $this->pag_num, 'page' => $this->pag_page, 'user_id' => $user_id, 'include' => $include, 'search_terms' => $search_terms, 'populate_extras' => $populate_extras ) );
-		}
 
 		if ( !$max || $max >= (int)$this->members['total'] )
 			$this->total_member_count = (int)$this->members['total'];
@@ -38,24 +37,25 @@ class BP_Core_Members_Template {
 		$this->members = $this->members['users'];
 
 		if ( $max ) {
-			if ( $max >= count($this->members) )
-				$this->member_count = count($this->members);
-			else
+			if ( $max >= count($this->members) ) {
+				$this->member_count = count( $this->members );
+			} else {
 				$this->member_count = (int)$max;
+			}
 		} else {
-			$this->member_count = count($this->members);
+			$this->member_count = count( $this->members );
 		}
 
-		if ( (int) $this->total_member_count && (int) $this->pag_num ) {
+		if ( (int)$this->total_member_count && (int)$this->pag_num ) {
 			$this->pag_links = paginate_links( array(
-				'base' => add_query_arg( 'upage', '%#%' ),
-				'format' => '',
-				'total' => ceil( (int) $this->total_member_count / (int) $this->pag_num ),
-				'current' => (int) $this->pag_page,
+				'base'      => add_query_arg( 'upage', '%#%' ),
+				'format'    => '',
+				'total'     => ceil( (int)$this->total_member_count / (int)$this->pag_num ),
+				'current'   => (int)$this->pag_page,
 				'prev_text' => '&larr;',
 				'next_text' => '&rarr;',
-				'mid_size' => 1
-			));
+				'mid_size'  => 1
+			) );
 		}
 	}
 
@@ -412,36 +412,9 @@ function bp_member_registered() {
 	function bp_get_member_registered() {
 		global $members_template;
 
-		$registered = attribute_escape( bp_core_get_last_activity( $members_template->member->user_registered, __( 'registered %s ago', 'buddypress' ) ) );
+		$registered = esc_attr( bp_core_get_last_activity( $members_template->member->user_registered, __( 'registered %s ago', 'buddypress' ) ) );
 
 		return apply_filters( 'bp_member_last_active', $registered );
-	}
-
-function bp_member_add_friend_button() {
-	global $members_template;
-
-	if ( function_exists( 'bp_add_friend_button' ) ) {
-		if ( null === $members_template->member->is_friend )
-			$friend_status = 'not_friends';
-		else
-			$friend_status = ( 0 == $members_template->member->is_friend ) ? 'pending' : 'is_friend';
-
-		echo bp_add_friend_button( $members_template->member->id, $friend_status );
-	}
-}
-
-function bp_member_total_friend_count() {
-	global $members_template;
-
-	echo bp_get_member_total_friend_count();
-}
-	function bp_get_member_total_friend_count() {
-		global $members_template;
-
-		if ( 1 == (int) $members_template->member->total_friend_count )
-			return apply_filters( 'bp_get_member_total_friend_count', sprintf( __( '%d friend', 'buddypress' ), (int) $members_template->member->total_friend_count ) );
-		else
-			return apply_filters( 'bp_get_member_total_friend_count', sprintf( __( '%d friends', 'buddypress' ), (int) $members_template->member->total_friend_count ) );
 	}
 
 function bp_member_random_profile_data() {
@@ -456,15 +429,15 @@ function bp_member_random_profile_data() {
 
 function bp_member_hidden_fields() {
 	if ( isset( $_REQUEST['s'] ) ) {
-		echo '<input type="hidden" id="search_terms" value="' . attribute_escape( $_REQUEST['s'] ) . '" name="search_terms" />';
+		echo '<input type="hidden" id="search_terms" value="' . esc_attr( $_REQUEST['s'] ) . '" name="search_terms" />';
 	}
 
 	if ( isset( $_REQUEST['letter'] ) ) {
-		echo '<input type="hidden" id="selected_letter" value="' . attribute_escape( $_REQUEST['letter'] ) . '" name="selected_letter" />';
+		echo '<input type="hidden" id="selected_letter" value="' . esc_attr( $_REQUEST['letter'] ) . '" name="selected_letter" />';
 	}
 
 	if ( isset( $_REQUEST['members_search'] ) ) {
-		echo '<input type="hidden" id="search_terms" value="' . attribute_escape( $_REQUEST['members_search'] ) . '" name="search_terms" />';
+		echo '<input type="hidden" id="search_terms" value="' . esc_attr( $_REQUEST['members_search'] ) . '" name="search_terms" />';
 	}
 }
 
@@ -477,7 +450,7 @@ function bp_directory_members_search_form() {
 
 	?>
 	<form action="" method="get" id="search-members-form">
-		<label><input type="text" name="s" id="members_search" value="<?php echo attribute_escape( $search_value ) ?>"  onfocus="if (this.value == '<?php _e( 'Search anything...', 'buddypress' ) ?>') {this.value = '';}" onblur="if (this.value == '') {this.value = '<?php _e( 'Search anything...', 'buddypress' ) ?>';}" /></label>
+		<label><input type="text" name="s" id="members_search" value="<?php echo esc_attr( $search_value ) ?>"  onfocus="if (this.value == '<?php _e( 'Search anything...', 'buddypress' ) ?>') {this.value = '';}" onblur="if (this.value == '') {this.value = '<?php _e( 'Search anything...', 'buddypress' ) ?>';}" /></label>
 		<input type="submit" id="members_search_submit" name="members_search_submit" value="<?php _e( 'Search', 'buddypress' ) ?>" />
 	</form>
 <?php
@@ -515,7 +488,7 @@ function bp_get_loggedin_user_nav() {
 	/* Loop through each navigation item */
 	foreach( (array) $bp->bp_nav as $nav_item ) {
 		/* If the current component matches the nav item id, then add a highlight CSS class. */
-		if ( !bp_is_directory && $bp->active_components[$bp->current_component] == $nav_item['css_id'] )
+		if ( !bp_is_directory() && $bp->active_components[$bp->current_component] == $nav_item['css_id'] )
 			$selected = ' class="current selected"';
 		else
 			$selected = '';
@@ -625,7 +598,7 @@ function bp_get_options_title() {
 	if ( empty( $bp->bp_options_title ) )
 		$bp->bp_options_title = __( 'Options', 'buddypress' );
 
-	echo apply_filters( 'bp_get_options_title', attribute_escape( $bp->bp_options_title ) );
+	echo apply_filters( 'bp_get_options_title', esc_attr( $bp->bp_options_title ) );
 }
 
 
@@ -840,10 +813,25 @@ function bp_exists( $component_name ) {
 }
 
 function bp_format_time( $time, $just_date = false ) {
-	$date = date( get_option('date_format'), $time );
+	if ( !$time )
+		return false;
 
+	// Get GMT offset from root blog
+	$root_blog_offset = get_blog_option( BP_ROOT_BLOG, 'gmt_offset' );
+
+	// Calculate offset time
+	$time_offest = $time + ( $root_blog_offset * 3600 );
+
+	// Current date (January 1, 2010)
+	$date = date( 'F j, Y ', $time_offest );
+
+	// Should we show the time also?
 	if ( !$just_date ) {
-		$date .= ' ' . __( 'at', 'buddypress' ) . date( ' ' . get_option('time_format'), $time );
+		// Current time (9:50pm)
+		$time = date( ' g:ia', $time_offest );
+
+		// Return string formatted with date and time
+		$date = sprintf( __( '%1$s at %2$s', 'buddypress' ), $date, $time );
 	}
 
 	return apply_filters( 'bp_format_time', $date );
@@ -900,7 +888,7 @@ function bp_page_title() {
 function bp_get_page_title() {
 	global $bp, $post, $wp_query, $current_blog;
 
-	if ( is_front_page() || !bp_current_component() || ( is_home() && bp_is_page( 'home' ) ) ) {
+	if ( is_front_page() || ( is_home() && bp_is_page( 'home' ) ) ) {
 		$title = __( 'Home', 'buddypress' );
 
 	} else if ( bp_is_blog_page() ) {
@@ -1084,6 +1072,31 @@ function bp_custom_profile_sidebar_boxes() {
 }
 
 /**
+ * bp_button( $button )
+ *
+ * Creates and outputs a button.
+ * Args: div_id | div_class | a_href | a_title | a_id | a_class | a_rel | a_text
+ *
+ * @param array $button
+ */
+function bp_button( $button = '' ) {
+	echo bp_get_button( $button );
+}
+	/**
+	 * bp_get_button( $button )
+	 *
+	 * Creates and returns a button.
+	 * Args: div_id | div_class | a_href | a_title | a_id | a_class | a_rel | a_text
+	 *
+	 * @param array $button
+	 * @return string
+	 */
+	function bp_get_button( $button = '' ) {
+		$btn = new BP_Button( $button );
+		return apply_filters( 'bp_get_button', $btn->contents, $button );
+	}
+
+/**
  * bp_create_excerpt()
  *
  * Fakes an excerpt on any content. Will not truncate words.
@@ -1117,26 +1130,6 @@ function bp_create_excerpt( $text, $excerpt_length = 55, $filter_shortcodes = tr
 add_filter( 'bp_create_excerpt', 'wp_trim_excerpt' );
 add_filter( 'bp_create_excerpt', 'stripslashes_deep' );
 add_filter( 'bp_create_excerpt', 'force_balance_tags' );
-
-/**
- * bp_is_serialized()
- *
- * Checks to see if the data passed has been serialized.
- *
- * @package BuddyPress Core
- * @param $data str The data that will be checked
- * @return bool false if the data is not serialized
- * @return bool true if the data is serialized
- */
-function bp_is_serialized( $data ) {
-	if ( '' == trim($data) )
-		return false;
-
-	if ( preg_match( "/^(i|s|a|o|d)(.*);/si", $data ) )
-		return true;
-
-	return false;
-}
 
 function bp_total_member_count() {
 	echo bp_get_total_member_count();
@@ -1331,7 +1324,7 @@ function bp_last_activity( $user_id = false, $echo = true ) {
 	if ( !$user_id )
 		$user_id = $bp->displayed_user->id;
 
-	$last_activity = bp_core_get_last_activity( get_usermeta( $user_id, 'last_activity' ), __('active %s ago', 'buddypress') );
+	$last_activity = bp_core_get_last_activity( get_user_meta( $user_id, 'last_activity', true ), __('active %s ago', 'buddypress') );
 
 	if ( $echo )
 		echo apply_filters( 'bp_last_activity', $last_activity );
@@ -1342,7 +1335,7 @@ function bp_last_activity( $user_id = false, $echo = true ) {
 function bp_user_has_access() {
 	global $bp;
 
-	if ( is_site_admin() || is_user_logged_in() && $bp->loggedin_user->id == $bp->displayed_user->id )
+	if ( is_super_admin() || is_user_logged_in() && $bp->loggedin_user->id == $bp->displayed_user->id )
 		$has_access = true;
 	else
 		$has_access = false;
@@ -1517,7 +1510,14 @@ function bp_is_front_page() {
 }
 
 function bp_is_activity_front_page() {
-	return ( 'page' == get_option('show_on_front') && 'activity' == get_option('page_on_front') && $_SERVER['REQUEST_URI'] == bp_core_get_site_path() );
+	global $current_blog;
+
+	if ( bp_core_is_main_site() )
+		$path = bp_core_get_site_path();
+	else
+		$path = $current_blog->path;
+
+	return ( 'page' == get_option('show_on_front') && 'activity' == get_option('page_on_front') && $_SERVER['REQUEST_URI'] == $path );
 }
 
 function bp_is_directory() {

@@ -11,10 +11,6 @@
 
 ignore_user_abort( true );
 
-if ( !empty( $_POST ) || defined( 'DOING_AJAX' ) || defined( 'DOING_CRON' ) ) {
-	die();
-}
-
 /**
  * Tell bbPress we are doing the CRON task.
  *
@@ -25,19 +21,24 @@ define( 'DOING_CRON', true );
 /** Setup bbPress environment */
 require_once( './bb-load.php' );
 
-if ( false === $crons = _get_cron_array() ) {
-	die();
+if ( $_GET['check'] != backpress_get_option( 'cron_check' ) ) {
+	exit;
 }
 
-$keys = array_keys( $crons );
-$local_time = time();
+if ( bb_get_option( 'doing_cron' ) > time() ) {
+	exit;
+}
 
-if ( !is_array( $crons ) || ( isset($keys[0]) && $keys[0] > $local_time ) ) {
-	die();
+bb_update_option( 'doing_cron', time() + 30 );
+
+$crons = _get_cron_array();
+$keys = array_keys( $crons );
+if ( !is_array( $crons ) || $keys[0] > time() ) {
+	return;
 }
 
 foreach ( $crons as $timestamp => $cronhooks ) {
-	if ( $timestamp > $local_time ) {
+	if ( $timestamp > time() ) {
 		break;
 	}
 	foreach ( $cronhooks as $hook => $keys ) {
@@ -52,3 +53,5 @@ foreach ( $crons as $timestamp => $cronhooks ) {
 		}
 	}
 }
+
+bb_update_option( 'doing_cron', 0 );
