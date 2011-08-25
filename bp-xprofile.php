@@ -321,7 +321,7 @@ function xprofile_screen_edit_profile() {
 				$errors = true;
 		}
 
-		if ( $errors )
+		if ( !empty( $errors ) )
 			bp_core_add_message( __( 'Please make sure you fill in all required fields in this profile field group before saving.', 'buddypress' ), 'error' );
 		else {
 			/* Reset the errors var */
@@ -335,7 +335,7 @@ function xprofile_screen_edit_profile() {
 					do_action( 'xprofile_profile_field_data_updated', $field_id, $_POST['field_' . $field_id] );
 			}
 
-			do_action( 'xprofile_updated_profile', $posted_field_ids, $errors );
+			do_action( 'xprofile_updated_profile', $bp->displayed_user->id, $posted_field_ids, $errors );
 
 			/* Set the feedback messages */
 			if ( $errors )
@@ -724,6 +724,12 @@ function xprofile_set_field_data( $field, $user_id, $value, $is_required = false
 	if ( $is_required && ( empty( $value ) || !strlen( trim( $value ) ) ) )
 		return false;
 
+	/* If the value is empty, then delete any field data that exists */
+	if ( empty( $value ) ) {
+		xprofile_delete_field_data( $field_id, $user_id );
+		return true;
+	}
+
 	$field = new BP_XProfile_Field( $field_id );
 
 	/* Check the value is an acceptable value */
@@ -764,10 +770,10 @@ function xprofile_delete_field_data( $field, $user_id ) {
 	else
 		$field_id = xprofile_get_field_id_from_name( $field );
 
-	if ( !$field_id )
+	if ( empty( $field_id ) || empty( $user_id ) )
 		return false;
 
-	$field = new BP_XProfile_ProfileData( $field_id );
+	$field = new BP_XProfile_ProfileData( $field_id, $user_id );
 	return $field->delete();
 }
 
@@ -887,13 +893,19 @@ function xprofile_avatar_upload_dir( $directory = false, $user_id = false ) {
  *
  * @package BuddyPress Core
  */
-function xprofile_sync_wp_profile() {
+function xprofile_sync_wp_profile( $user_id = false ) {
 	global $bp, $wpdb;
 
 	if ( (int)$bp->site_options['bp-disable-profile-sync'] )
 		return true;
 
-	$fullname = xprofile_get_field_data( BP_XPROFILE_FULLNAME_FIELD_NAME, $bp->loggedin_user->id );
+	if ( empty( $user_id ) )
+		$user_id = $bp->loggedin_user->id;
+
+	if ( empty( $user_id ) )
+		return false;
+
+	$fullname = xprofile_get_field_data( BP_XPROFILE_FULLNAME_FIELD_NAME, $user_id );
 	$space = strpos( $fullname, ' ' );
 
 	if ( false === $space ) {
@@ -904,15 +916,15 @@ function xprofile_sync_wp_profile() {
 		$lastname = trim( substr( $fullname, $space, strlen($fullname) ) );
 	}
 
-	update_usermeta( $bp->loggedin_user->id, 'nickname', $fullname );
-	update_usermeta( $bp->loggedin_user->id, 'first_name', $firstname );
-	update_usermeta( $bp->loggedin_user->id, 'last_name', $lastname );
+	update_usermeta( $user_id, 'nickname', $fullname );
+	update_usermeta( $user_id, 'first_name', $firstname );
+	update_usermeta( $user_id, 'last_name', $lastname );
 
-	$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->users} SET display_name = %s WHERE ID = %d", $fullname, $bp->loggedin_user->id ) );
-	$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->users} SET user_url = %s WHERE ID = %d", bp_core_get_user_domain( $bp->loggedin_user->id ), $bp->loggedin_user->id ) );
+	$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->users} SET display_name = %s WHERE ID = %d", $fullname, $user_id ) );
+	$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->users} SET user_url = %s WHERE ID = %d", bp_core_get_user_domain( $user_id ), $user_id ) );
 }
 add_action( 'xprofile_updated_profile', 'xprofile_sync_wp_profile' );
-
+add_action( 'bp_core_signup_user', 'xprofile_sync_wp_profile' );
 
 /**
  * xprofile_remove_screen_notifications()

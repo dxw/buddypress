@@ -144,7 +144,7 @@ function bp_has_blogs( $args = '' ) {
 	}
 
 	$blogs_template = new BP_Blogs_Template( $type, $page, $per_page, $max, $user_id, $search_terms );
-	return $blogs_template->has_blogs();
+	return apply_filters( 'bp_has_blogs', $blogs_template->has_blogs(), &$blogs_template );
 }
 
 function bp_blogs() {
@@ -467,7 +467,7 @@ function bp_create_blog_link() {
 	global $bp;
 
 	if ( bp_is_my_profile() )	{
-		echo apply_filters( 'bp_create_blog_link', '<a href="' . $bp->loggedin_user->domain . $bp->blogs->slug . '/create-a-blog">' . __('Create a Blog', 'buddypress') . '</a>' );
+		echo apply_filters( 'bp_create_blog_link', '<a href="' . $bp->root_domain . '/' . $bp->blogs->slug . '/create">' . __('Create a Blog', 'buddypress') . '</a>' );
 	}
 }
 
