@@ -1,9 +1,11 @@
 === Plugin Name ===
 Contributors: apeatling, johnjamesjacoby, MrMaz, DJPaul, boonebgorges
 Tags: buddypress, social networking, activity, profiles, messaging, friends, groups, forums, microblogging, twitter, facebook, social, community, networks, networking, cms
-Requires at least: 3.3
-Tested up to: 3.4
+Requires at least: 3.4
+Tested up to: 3.4.1
 Stable tag: 1.5.6
+License: GPLv2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 Social networking in a box. Build a social network for your company, school, sports team or niche community.
 
@@ -84,43 +86,17 @@ BuddyPress is available in more than 20 languages. For more information, check o
 
 == Upgrade Notice ==
 
-= 1.5.6 =
-* Compatibility with WordPress 3.4
-
-= 1.5.5 =
-* Security upgrade
-* Fixes over 10 bugs
-
-= 1.5.4 =
-* Fix bug allowing group members that are friends to be invited twice
-* Fix unpublished page preview when page is root component
-
-= 1.5.3.1 =
-* Fixes bug related to password changes
-* See http://codex.buddypress.org/releases/version-1-5-3-1/
-
-= 1.5.3 =
-* Fixes 6 minor bugs/notices
-* See http://codex.buddypress.org/releases/version-1-5-3/
-
-= 1.5.2 =
-* Compatibility with WordPress 3.3
-* Fixes 10 minor bugs/notices
-
-= 1.5.1 =
-* Fixes over 25 issues
-
 = 1.5 =
 See: http://codex.buddypress.org/releases/version-1-5/
 
 = 1.2.9 =
-* Compatibility with WordPress 3.2
+Compatibility with WordPress 3.2
 
 = 1.2.8 =
-* Compatibility with WordPress 3.1
+Compatibility with WordPress 3.1
 
 = 1.2.7 =
-* Fixes over 10 bugs.
+Fixes over 10 bugs.
 
 == Changelog ==
 
