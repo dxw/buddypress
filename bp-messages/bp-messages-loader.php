@@ -1,31 +1,22 @@
 <?php
-
 /**
- * BuddyPress Messages Loader
+ * BuddyPress Private Messages Loader
  *
  * A private messages component, for users to send messages to each other
  *
  * @package BuddyPress
- * @subpackage MessagesLoader
+ * @subpackage Messages Core
  */
 
 // Exit if accessed directly
 if ( !defined( 'ABSPATH' ) ) exit;
 
 class BP_Messages_Component extends BP_Component {
-	/**
-	 * If this is true, the Message autocomplete will return friends only, unless
-	 * this is set to false, in which any matching users will be returned.
-	 *
-	 * @since BuddyPress (1.5)
-	 * @var bool
-	 */
-	public $autocomplete_all;
 
 	/**
 	 * Start the messages component creation process
 	 *
-	 * @since BuddyPress (1.5)
+	 * @since 1.5
 	 */
 	function __construct() {
 		parent::start(
@@ -61,8 +52,8 @@ class BP_Messages_Component extends BP_Component {
 	 * The BP_MESSAGES_SLUG constant is deprecated, and only used here for
 	 * backwards compatibility.
 	 *
-	 * @since BuddyPress (1.5)
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @since 1.5
+	 * @global obj $bp
 	 */
 	function setup_globals() {
 		global $bp;
@@ -81,6 +72,7 @@ class BP_Messages_Component extends BP_Component {
 		// All globals for messaging component.
 		// Note that global_tables is included in this array.
 		$globals = array(
+			'path'                  => BP_PLUGIN_DIR,
 			'slug'                  => BP_MESSAGES_SLUG,
 			'has_directory'         => false,
 			'notification_callback' => 'messages_format_notifications',
@@ -96,12 +88,12 @@ class BP_Messages_Component extends BP_Component {
 	/**
 	 * Setup BuddyBar navigation
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_nav() {
+		global $bp;
 
-		$sub_nav = array();
-		$name    = sprintf( __( 'Messages <span>%s</span>', 'buddypress' ), bp_get_total_unread_messages_count() );
+		$name = sprintf( __( 'Messages <span>%s</span>', 'buddypress' ), bp_get_total_unread_messages_count() );
 
 		// Add 'Messages' to the main navigation
 		$main_nav = array(
@@ -115,7 +107,7 @@ class BP_Messages_Component extends BP_Component {
 		);
 
 		// Link to user messages
-		$messages_link = trailingslashit( bp_loggedin_user_domain() . $this->slug );
+		$messages_link = trailingslashit( $bp->loggedin_user->domain . $this->slug );
 
 		// Add the subnav items to the profile
 		$sub_nav[] = array(
@@ -148,7 +140,7 @@ class BP_Messages_Component extends BP_Component {
 			'user_has_access' => bp_is_my_profile()
 		);
 
-		if ( bp_current_user_can( 'bp_moderate' ) ) {
+		if ( is_super_admin() ) {
 			$sub_nav[] = array(
 				'name'            => __( 'Notices', 'buddypress' ),
 				'slug'            => 'notices',
@@ -156,7 +148,7 @@ class BP_Messages_Component extends BP_Component {
 				'parent_slug'     => $this->slug,
 				'screen_function' => 'messages_screen_notices',
 				'position'        => 90,
-				'user_has_access' => bp_current_user_can( 'bp_moderate' )
+				'user_has_access' => is_super_admin()
 			);
 		}
 
@@ -164,9 +156,9 @@ class BP_Messages_Component extends BP_Component {
 	}
 
 	/**
-	 * Set up the Toolbar
+	 * Set up the admin bar
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_admin_bar() {
 		global $bp;
@@ -178,14 +170,13 @@ class BP_Messages_Component extends BP_Component {
 		if ( is_user_logged_in() ) {
 
 			// Setup the logged in user variables
-			$user_domain   = bp_loggedin_user_domain();
+			$user_domain   = $bp->loggedin_user->domain;
 			$messages_link = trailingslashit( $user_domain . $this->slug );
 
 			// Unread message count
-			$count = messages_get_unread_count();
-			if ( !empty( $count ) ) {
-				$title = sprintf( __( 'Messages <span class="count">%s</span>', 'buddypress' ), number_format_i18n( $count ) );
-				$inbox = sprintf( __( 'Inbox <span class="count">%s</span>',    'buddypress' ), number_format_i18n( $count ) );
+			if ( $count = messages_get_unread_count() ) {
+				$title = sprintf( __( 'Messages <span class="count">%s</span>', 'buddypress' ), $count );
+				$inbox = sprintf( __( 'Inbox <span class="count">%s</span>',    'buddypress' ), $count );
 			} else {
 				$title = __( 'Messages', 'buddypress' );
 				$inbox = __( 'Inbox',    'buddypress' );
@@ -224,7 +215,7 @@ class BP_Messages_Component extends BP_Component {
 			);
 
 			// Site Wide Notices
-			if ( bp_current_user_can( 'bp_moderate' ) ) {
+			if ( is_super_admin() ) {
 				$wp_admin_nav[] = array(
 					'parent' => 'my-account-' . $this->id,
 					'id'     => 'my-account-' . $this->id . '-notices',
@@ -240,7 +231,7 @@ class BP_Messages_Component extends BP_Component {
 	/**
 	 * Sets up the title for pages and <title>
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_title() {
 		global $bp;
@@ -250,22 +241,17 @@ class BP_Messages_Component extends BP_Component {
 				$bp->bp_options_title = __( 'My Messages', 'buddypress' );
 			} else {
 				$bp->bp_options_avatar = bp_core_fetch_avatar( array(
-					'item_id' => bp_displayed_user_id(),
-					'type'    => 'thumb',
-					'alt'     => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_displayed_user_fullname() )
+					'item_id' => $bp->displayed_user->id,
+					'type'    => 'thumb'
 				) );
-				$bp->bp_options_title = bp_get_displayed_user_fullname();
+				$bp->bp_options_title = $bp->displayed_user->fullname;
 			}
 		}
 
 		parent::setup_title();
 	}
 }
-
-function bp_setup_messages() {
-	global $bp;
-	$bp->messages = new BP_Messages_Component();
-}
-add_action( 'bp_setup_components', 'bp_setup_messages', 6 );
+// Create the messages component
+$bp->messages = new BP_Messages_Component();
 
 ?>

@@ -13,11 +13,12 @@ if ( !defined( 'ABSPATH' ) ) exit;
 /**
  * Sends an email notification and a BP notification when someone mentions you in an update
  *
- * @since BuddyPress (1.2)
+ * @since 1.2.0
  *
  * @param int $activity_id The id of the activity update
  * @param int $receiver_user_id The unique user_id of the user who is receiving the update
  *
+ * @global object $bp BuddyPress global settings
  * @uses bp_core_add_notification()
  * @uses bp_get_user_meta()
  * @uses bp_core_get_user_displayname()
@@ -38,15 +39,7 @@ if ( !defined( 'ABSPATH' ) ) exit;
  * @uses do_action() To call the 'bp_activity_sent_mention_email' hook
  */
 function bp_activity_at_message_notification( $activity_id, $receiver_user_id ) {
-	
-	// Don't leave multiple notifications for the same activity item
-	$notifications = BP_Core_Notification::get_all_for_user( $receiver_user_id, 'all' );
-	
-	foreach( $notifications as $notification ) {
-		if ( $activity_id == $notification->item_id ) {
-			return;
-		}
-	}
+	global $bp;
 
 	$activity = new BP_Activity_Activity( $activity_id );
 
@@ -111,12 +104,13 @@ To view and respond to the message, log in and visit: %3$s
 /**
  * Sends an email notification and a BP notification when someone mentions you in an update
  *
- * @since BuddyPress (1.2)
+ * @since 1.2.0
  *
  * @param int $comment_id The comment id
  * @param int $commenter_id The unique user_id of the user who posted the comment
  * @param array $params {@link bp_activity_new_comment()}
  *
+ * @global object $bp BuddyPress global settings
  * @uses bp_get_user_meta()
  * @uses bp_core_get_user_displayname()
  * @uses bp_activity_get_permalink()
@@ -138,10 +132,7 @@ To view and respond to the message, log in and visit: %3$s
  * @uses do_action() To call the 'bp_activity_sent_reply_to_reply_email' hook
  */
 function bp_activity_new_comment_notification( $comment_id, $commenter_id, $params ) {
-
-	// Set some default parameters
-	$activity_id = 0;
-	$parent_id   = 0;
+	global $bp;
 
 	extract( $params );
 

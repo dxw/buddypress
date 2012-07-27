@@ -7,7 +7,9 @@
  * @subpackage bp-default
  */
 
-get_header( 'buddypress' ); ?>
+?>
+
+<?php get_header( 'buddypress' ); ?>
 
 	<?php do_action( 'bp_before_directory_groups_page' ); ?>
 
@@ -24,7 +26,7 @@ get_header( 'buddypress' ); ?>
 
 			<div id="group-dir-search" class="dir-search" role="search">
 
-				<?php bp_directory_groups_search_form(); ?>
+				<?php bp_directory_groups_search_form() ?>
 
 			</div><!-- #group-dir-search -->
 

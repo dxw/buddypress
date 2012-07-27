@@ -1,7 +1,7 @@
 <?php
 
 /**
- * RSS2 Feed Template for displaying a member's activity mentions
+ * RSS2 Feed Template for displaying a member's group's activity
  *
  * @package BuddyPress
  * @subpackage ActivityFeeds
@@ -24,18 +24,16 @@ header('Status: 200 OK');
 >
 
 <channel>
-	<?php /* translators: Mentions RSS title - "[Site Name] | [Displayed User Name] | Mentions" */ ?>
-	<title><?php printf( '%1$s | %2$s | %3$s', bp_get_site_name(), bp_get_displayed_user_fullname(), __( 'Mentions', 'buddypress' ) ) ?></title>
+	<title><?php bp_site_name() ?> | <?php echo $bp->displayed_user->fullname; ?> | <?php _e( 'Mentions', 'buddypress' ) ?></title>
 	<atom:link href="<?php self_link(); ?>" rel="self" type="application/rss+xml" />
 	<link><?php echo home_url( bp_get_activity_root_slug() . '/#mentions/' ) ?></link>
-	<?php /* translators: Mentions RSS title - "[Site Name] | [Displayed User Name] | Mentions" */ ?>
-	<description><?php printf( __( '%s - Mentions', 'buddypress' ), bp_get_displayed_user_fullname() ) ?></description>
+	<description><?php echo $bp->displayed_user->fullname; ?> - <?php _e( 'Mentions', 'buddypress' ) ?></description>
 	<pubDate><?php echo mysql2date('D, d M Y H:i:s O', bp_activity_get_last_updated(), false); ?></pubDate>
 	<generator>http://buddypress.org/?v=<?php echo BP_VERSION ?></generator>
 	<language><?php echo get_option('rss_language'); ?></language>
 	<?php do_action('bp_activity_mentions_feed_head'); ?>
 
-	<?php if ( bp_has_activities( 'max=50&display_comments=stream&search_terms=@' . bp_core_get_username( bp_displayed_user_id() ) ) ) : ?>
+	<?php if ( bp_has_activities( 'max=50&display_comments=stream&search_terms=@' . bp_core_get_username( $bp->displayed_user->id, $bp->displayed_user->userdata->user_nicename, $bp->displayed_user->userdata->user_login ) ) ) : ?>
 		<?php while ( bp_activities() ) : bp_the_activity(); ?>
 			<item>
 				<guid><?php bp_activity_thread_permalink() ?></guid>

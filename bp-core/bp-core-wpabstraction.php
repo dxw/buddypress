@@ -5,27 +5,28 @@
  * The functions within this file will detect the version of WordPress you are running
  * and will alter the environment so BuddyPress can run regardless.
  *
- * The code below mostly contains function mappings. This file is subject to change at any time.
+ * The code below mostly contains function mappings. This code is subject to change once
+ * the 3.0 WordPress version merge takes place.
  */
 
 // Exit if accessed directly
 if ( !defined( 'ABSPATH' ) ) exit;
 
 /**
- * Parse the WordPress core version number into the major release
+ * Parso the WordPress core version number into the major release
  *
  * @since BuddyPress (1.5.2)
  * @global string $wp_version
- * @return string
+ * @return string 
  */
 function bp_get_major_wp_version() {
 	global $wp_version;
-
+	
 	return (float) $wp_version;
 }
 
 /**
- * Only add MS-specific abstraction functions if WordPress is not in multisite mode
+ * Only add abstraction functions if WordPress is not in multisite mode
  */
 if ( !is_multisite() ) {
 	global $wpdb;

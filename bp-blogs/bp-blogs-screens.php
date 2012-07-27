@@ -1,12 +1,4 @@
 <?php
-
-/**
- * BuddyPress Blogs Screens
- *
- * @package BuddyPress
- * @subpackage BlogsScreens
- */
-
 // Exit if accessed directly
 if ( !defined( 'ABSPATH' ) ) exit;
 

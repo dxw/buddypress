@@ -1,5 +1,4 @@
 <?php
-
 /**
  * BuddyPress Blogs Streams Loader
  *
@@ -17,7 +16,7 @@ class BP_Blogs_Component extends BP_Component {
 	/**
 	 * Start the blogs component creation process
 	 *
-	 * @since BuddyPress (1.5)
+	 * @since 1.5
 	 */
 	function __construct() {
 		parent::start(
@@ -33,8 +32,8 @@ class BP_Blogs_Component extends BP_Component {
 	 * The BP_BLOGS_SLUG constant is deprecated, and only used here for
 	 * backwards compatibility.
 	 *
-	 * @since BuddyPress (1.5)
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @since 1.5
+	 * @global obj $bp
 	 */
 	function setup_globals() {
 		global $bp;
@@ -51,6 +50,7 @@ class BP_Blogs_Component extends BP_Component {
 		// All globals for messaging component.
 		// Note that global_tables is included in this array.
 		$globals = array(
+			'path'                  => BP_PLUGIN_DIR,
 			'slug'                  => BP_BLOGS_SLUG,
 			'root_slug'             => isset( $bp->pages->blogs->slug ) ? $bp->pages->blogs->slug : BP_BLOGS_SLUG,
 			'has_directory'         => is_multisite(), // Non-multisite installs don't need a top-level Sites directory, since there's only one site
@@ -75,7 +75,6 @@ class BP_Blogs_Component extends BP_Component {
 			'screens',
 			'classes',
 			'template',
-			'filters',
 			'activity',
 			'functions',
 			'buddybar'
@@ -91,7 +90,7 @@ class BP_Blogs_Component extends BP_Component {
 	/**
 	 * Setup BuddyBar navigation
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_nav() {
 		global $bp;
@@ -104,37 +103,24 @@ class BP_Blogs_Component extends BP_Component {
 		if ( !is_multisite() )
 			return false;
 
-		$sub_nav = array();
-
 		// Add 'Sites' to the main navigation
 		$main_nav =  array(
 			'name'                => sprintf( __( 'Sites <span>%d</span>', 'buddypress' ), bp_blogs_total_blogs_for_user() ),
 			'slug'                => $this->slug,
 			'position'            => 30,
 			'screen_function'     => 'bp_blogs_screen_my_blogs',
-			'default_subnav_slug' => 'my-sites',
+			'default_subnav_slug' => 'my-blogs',
 			'item_css_id'         => $this->id
-		);
-		
-		$parent_url = trailingslashit( bp_displayed_user_domain() . bp_get_blogs_slug() );
-		
-		$sub_nav[] = array(
-			'name'            => __( 'My Sites', 'buddypress' ),
-			'slug'            => 'my-sites',
-			'parent_url'      => $parent_url,
-			'parent_slug'     => $bp->blogs->slug,
-			'screen_function' => 'bp_blogs_screen_my_blogs',
-			'position'        => 10
 		);
 
 		// Setup navigation
-		parent::setup_nav( $main_nav, $sub_nav );
+		parent::setup_nav( $main_nav );
 	}
 
 	/**
-	 * Set up the Toolbar
+	 * Set up the admin bar
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_admin_bar() {
 		global $bp;
@@ -153,7 +139,7 @@ class BP_Blogs_Component extends BP_Component {
 		// Menus for logged in user
 		if ( is_user_logged_in() ) {
 
-			$blogs_link = trailingslashit( bp_loggedin_user_domain() . $this->slug );
+			$blogs_link = trailingslashit( $bp->loggedin_user->domain . $this->slug );
 
 			// Add the "Blogs" sub menu
 			$wp_admin_nav[] = array(
@@ -179,7 +165,7 @@ class BP_Blogs_Component extends BP_Component {
 	/**
 	 * Sets up the title for pages and <title>
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_title() {
 		global $bp;
@@ -195,22 +181,17 @@ class BP_Blogs_Component extends BP_Component {
 			// users avatar and name
 			} else {
 				$bp->bp_options_avatar = bp_core_fetch_avatar( array(
-					'item_id' => bp_displayed_user_id(),
-					'type'    => 'thumb',
-					'alt'     => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_displayed_user_fullname() )
+					'item_id' => $bp->displayed_user->id,
+					'type'    => 'thumb'
 				) );
-				$bp->bp_options_title = bp_get_displayed_user_fullname();
+				$bp->bp_options_title = $bp->displayed_user->fullname;
 			}
 		}
 
 		parent::setup_title();
 	}
 }
-
-function bp_setup_blogs() {
-	global $bp;
-	$bp->blogs = new BP_Blogs_Component();
-}
-add_action( 'bp_setup_components', 'bp_setup_blogs', 6 );
+// Create the blogs component
+$bp->blogs = new BP_Blogs_Component();
 
 ?>

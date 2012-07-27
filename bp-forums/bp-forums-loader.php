@@ -1,5 +1,4 @@
 <?php
-
 /**
  * BuddyPress Forums Loader
  *
@@ -17,7 +16,7 @@ class BP_Forums_Component extends BP_Component {
 	/**
 	 * Start the forums component creation process
 	 *
-	 * @since BuddyPress (1.5)
+	 * @since 1.5
 	 */
 	function __construct() {
 		parent::start(
@@ -33,8 +32,8 @@ class BP_Forums_Component extends BP_Component {
 	 * The BP_FORUMS_SLUG constant is deprecated, and only used here for
 	 * backwards compatibility.
 	 *
-	 * @since BuddyPress (1.5)
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @since 1.5
+	 * @global obj $bp
 	 */
 	function setup_globals() {
 		global $bp;
@@ -54,6 +53,7 @@ class BP_Forums_Component extends BP_Component {
 		// All globals for messaging component.
 		// Note that global_tables is included in this array.
 		$globals = array(
+			'path'                  => BP_PLUGIN_DIR,
 			'slug'                  => BP_FORUMS_SLUG,
 			'root_slug'             => isset( $bp->pages->forums->slug ) ? $bp->pages->forums->slug : BP_FORUMS_SLUG,
 			'has_directory'         => true,
@@ -93,7 +93,7 @@ class BP_Forums_Component extends BP_Component {
 	/**
 	 * Setup BuddyBar navigation
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_nav() {
 		global $bp;
@@ -103,7 +103,7 @@ class BP_Forums_Component extends BP_Component {
 			return;
 
 		// Stop if there is no user displayed or logged in
-		if ( !is_user_logged_in() && !bp_displayed_user_id() )
+		if ( !is_user_logged_in() && !isset( $bp->displayed_user->id ) )
 			return;
 
 		// Add 'Forums' to the main navigation
@@ -117,10 +117,12 @@ class BP_Forums_Component extends BP_Component {
 		);
 
 		// Determine user to use
-		if ( bp_displayed_user_domain() ) {
-			$user_domain = bp_displayed_user_domain();
-		} elseif ( bp_loggedin_user_domain() ) {
-			$user_domain = bp_loggedin_user_domain();
+		if ( isset( $bp->displayed_user->domain ) ) {
+			$user_domain = $bp->displayed_user->domain;
+			$user_login  = $bp->displayed_user->userdata->user_login;
+		} elseif ( isset( $bp->loggedin_user->domain ) ) {
+			$user_domain = $bp->loggedin_user->domain;
+			$user_login  = $bp->loggedin_user->userdata->user_login;
 		} else {
 			return;
 		}
@@ -167,9 +169,9 @@ class BP_Forums_Component extends BP_Component {
 	}
 
 	/**
-	 * Set up the Toolbar
+	 * Set up the admin bar
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_admin_bar() {
 		global $bp;
@@ -181,7 +183,9 @@ class BP_Forums_Component extends BP_Component {
 		if ( is_user_logged_in() ) {
 
 			// Setup the logged in user variables
-			$forums_link = trailingslashit( bp_loggedin_user_domain() . $this->slug );
+			$user_domain = $bp->loggedin_user->domain;
+			$user_login  = $bp->loggedin_user->userdata->user_login;
+			$forums_link = trailingslashit( $user_domain . $this->slug );
 
 			// Add the "My Account" sub menus
 			$wp_admin_nav[] = array(
@@ -222,7 +226,7 @@ class BP_Forums_Component extends BP_Component {
 	/**
 	 * Sets up the title for pages and <title>
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_title() {
 		global $bp;
@@ -233,23 +237,17 @@ class BP_Forums_Component extends BP_Component {
 				$bp->bp_options_title = __( 'Forums', 'buddypress' );
 			} else {
 				$bp->bp_options_avatar = bp_core_fetch_avatar( array(
-					'item_id' => bp_displayed_user_id(),
-					'type'    => 'thumb',
-					'alt'     => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_displayed_user_fullname() )
+					'item_id' => $bp->displayed_user->id,
+					'type'    => 'thumb'
 				) );
-				$bp->bp_options_title  = bp_get_displayed_user_fullname();
+				$bp->bp_options_title  = $bp->displayed_user->fullname;
 			}
 		}
 
 		parent::setup_title();
 	}
 }
-
-function bp_setup_forums() {
-	global $bp;
-
-	$bp->forums = new BP_Forums_Component();
-}
-add_action( 'bp_setup_components', 'bp_setup_forums', 6 );
+// Create the forums component
+$bp->forums = new BP_Forums_Component();
 
 ?>

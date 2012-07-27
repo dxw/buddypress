@@ -1,13 +1,7 @@
 <?php
-
-/**
- * BuddyPress Messages Caching
- *
+/*******************************************************************************
  * Caching functions handle the clearing of cached objects and pages on specific
  * actions throughout BuddyPress.
- *
- * @package BuddyPress
- * @subpackage SettingsLoader
  */
 
 // Exit if accessed directly

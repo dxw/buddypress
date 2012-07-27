@@ -1,5 +1,4 @@
 <?php
-
 /**
  * BuddyPress XProfile Loader
  *
@@ -7,33 +6,18 @@
  * groups of fields for users to enter information about themselves.
  *
  * @package BuddyPress
- * @subpackage XProfileLoader
+ * @subpackage XProfile Core
  */
 
 // Exit if accessed directly
 if ( !defined( 'ABSPATH' ) ) exit;
 
 class BP_XProfile_Component extends BP_Component {
-	/**
-	 * Profile field types
-	 *
-	 * @since BuddyPress (1.5)
-	 * @var array
-	 */
-	public $field_types;
-
-	/**
-	 * The acceptable visibility levels for xprofile fields.
-	 *
-	 * @see bp_xprofile_get_visibility_levels()
-	 * @since 1.6
-	 */
-	var $visibility_levels = array();
 
 	/**
 	 * Start the xprofile component creation process
 	 *
-	 * @since BuddyPress (1.5)
+	 * @since 1.5
 	 */
 	function __construct() {
 		parent::start(
@@ -53,7 +37,6 @@ class BP_XProfile_Component extends BP_Component {
 			'actions',
 			'activity',
 			'screens',
-			'caps',
 			'classes',
 			'filters',
 			'template',
@@ -73,8 +56,8 @@ class BP_XProfile_Component extends BP_Component {
 	 * The BP_XPROFILE_SLUG constant is deprecated, and only used here for
 	 * backwards compatibility.
 	 *
-	 * @since BuddyPress (1.5)
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @since 1.5
+	 * @global obj $bp
 	 */
 	function setup_globals() {
 		global $bp;
@@ -98,25 +81,6 @@ class BP_XProfile_Component extends BP_Component {
 			'multiselectbox',
 			'datebox'
 		) );
-		
-		// Register the visibility levels. See bp_xprofile_get_visibility_levels() to filter		
-		$this->visibility_levels = array(
-			'public'  => array(
-				'id'	=> 'public',
-				'label' => __( 'Anyone', 'buddypress' )
-			),
-			'loggedin' => array(
-				'id'	=> 'loggedin',
-				'label' => __( 'Logged In Users', 'buddypress' )
-			)
-		);
-		
-		if ( bp_is_active( 'friends' ) ) {
-			$this->visibility_levels['friends'] = array(
-				'id'	=> 'friends',
-				'label'	=> __( 'My Friends', 'buddypress' )
-			);
-		}
 
 		// Tables
 		$global_tables = array(
@@ -139,11 +103,10 @@ class BP_XProfile_Component extends BP_Component {
 	/**
 	 * Setup BuddyBar navigation
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_nav() {
-
-		$sub_nav = array();
+		global $bp;
 
 		// Add 'Profile' to the main navigation
 		$main_nav = array(
@@ -155,7 +118,7 @@ class BP_XProfile_Component extends BP_Component {
 			'item_css_id'         => $this->id
 		);
 
-		$profile_link = trailingslashit( bp_loggedin_user_domain() . $this->slug );
+		$profile_link = trailingslashit( $bp->loggedin_user->domain . $this->slug );
 
 		// Add the subnav items to the profile
 		$sub_nav[] = array(
@@ -191,9 +154,9 @@ class BP_XProfile_Component extends BP_Component {
 	}
 
 	/**
-	 * Set up the Toolbar
+	 * Set up the admin bar
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_admin_bar() {
 		global $bp;
@@ -205,7 +168,7 @@ class BP_XProfile_Component extends BP_Component {
 		if ( is_user_logged_in() ) {
 
 			// Profile link
-			$profile_link = trailingslashit( bp_loggedin_user_domain() . $this->slug );
+			$profile_link = trailingslashit( $bp->loggedin_user->domain . $this->slug );
 
 			// Add the "Profile" sub menu
 			$wp_admin_nav[] = array(
@@ -218,7 +181,7 @@ class BP_XProfile_Component extends BP_Component {
 			// View Profile
 			$wp_admin_nav[] = array(
 				'parent' => 'my-account-' . $this->id,
-				'id'     => 'my-account-' . $this->id . '-public',
+				'id'     => 'my-account-' . $this->id . '-view',
 				'title'  => __( 'View', 'buddypress' ),
 				'href'   => trailingslashit( $profile_link . 'public' )
 			);
@@ -247,7 +210,7 @@ class BP_XProfile_Component extends BP_Component {
 	/**
 	 * Sets up the title for pages and <title>
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_title() {
 		global $bp;
@@ -257,24 +220,18 @@ class BP_XProfile_Component extends BP_Component {
 				$bp->bp_options_title = __( 'My Profile', 'buddypress' );
 			} else {
 				$bp->bp_options_avatar = bp_core_fetch_avatar( array(
-					'item_id' => bp_displayed_user_id(),
-					'type'    => 'thumb',
-					'alt'	  => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_displayed_user_fullname() )
+					'item_id' => $bp->displayed_user->id,
+					'type'    => 'thumb'
 				) );
-				$bp->bp_options_title = bp_get_displayed_user_fullname();
+				$bp->bp_options_title = $bp->displayed_user->fullname;
 			}
 		}
 
 		parent::setup_title();
 	}
 }
-
-function bp_setup_xprofile() {
-	global $bp;
-
-	if ( !isset( $bp->profile->id ) )
-		$bp->profile = new BP_XProfile_Component();
-}
-add_action( 'bp_setup_components', 'bp_setup_xprofile', 6 );
+// Create the xprofile component
+if ( !isset( $bp->profile->id ) )
+	$bp->profile = new BP_XProfile_Component();
 
 ?>

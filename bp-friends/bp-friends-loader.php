@@ -16,7 +16,7 @@ class BP_Friends_Component extends BP_Component {
 	/**
 	 * Start the friends component creation process
 	 *
-	 * @since BuddyPress (1.5)
+	 * @since 1.5
 	 */
 	function __construct() {
 		parent::start(
@@ -51,8 +51,8 @@ class BP_Friends_Component extends BP_Component {
 	 * The BP_FRIENDS_SLUG constant is deprecated, and only used here for
 	 * backwards compatibility.
 	 *
-	 * @since BuddyPress (1.5)
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @since 1.5
+	 * @global obj $bp
 	 */
 	function setup_globals() {
 		global $bp;
@@ -72,6 +72,7 @@ class BP_Friends_Component extends BP_Component {
 		// All globals for the friends component.
 		// Note that global_tables is included in this array.
 		$globals = array(
+			'path'                  => BP_PLUGIN_DIR,
 			'slug'                  => BP_FRIENDS_SLUG,
 			'has_directory'         => false,
 			'search_string'         => __( 'Search Friends...', 'buddypress' ),
@@ -85,12 +86,10 @@ class BP_Friends_Component extends BP_Component {
 	/**
 	 * Setup BuddyBar navigation
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_nav() {
 		global $bp;
-
-		$sub_nav = array();
 
 		// Add 'Friends' to the main navigation
 		$main_nav = array(
@@ -102,7 +101,7 @@ class BP_Friends_Component extends BP_Component {
 			'item_css_id'         => $bp->friends->id
 		);
 
-		$friends_link = trailingslashit( bp_loggedin_user_domain() . bp_get_friends_slug() );
+		$friends_link = trailingslashit( $bp->loggedin_user->domain . bp_get_friends_slug() );
 
 		// Add the subnav items to the friends nav item
 		$sub_nav[] = array(
@@ -129,9 +128,9 @@ class BP_Friends_Component extends BP_Component {
 	}
 
 	/**
-	 * Set up the Toolbar
+	 * Set up the admin bar
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_admin_bar() {
 		global $bp;
@@ -143,14 +142,13 @@ class BP_Friends_Component extends BP_Component {
 		if ( is_user_logged_in() ) {
 
 			// Setup the logged in user variables
-			$user_domain  = bp_loggedin_user_domain();
+			$user_domain  = $bp->loggedin_user->domain;
 			$friends_link = trailingslashit( $user_domain . $this->slug );
 
 			// Pending friend requests
-			$count = count( friends_get_friendship_request_user_ids( bp_loggedin_user_id() ) );
-			if ( !empty( $count ) ) {
-				$title   = sprintf( __( 'Friends <span class="count">%s</span>',          'buddypress' ), number_format_i18n( $count ) );
-				$pending = sprintf( __( 'Pending Requests <span class="count">%s</span>', 'buddypress' ), number_format_i18n( $count ) );
+			if ( $count = count( friends_get_friendship_request_user_ids( $bp->loggedin_user->id ) ) ) {
+				$title   = sprintf( __( 'Friends <span class="count">%s</span>',          'buddypress' ), $count );
+				$pending = sprintf( __( 'Pending Requests <span class="count">%s</span>', 'buddypress' ), $count );
 			} else {
 				$title   = __( 'Friends',             'buddypress' );
 				$pending = __( 'No Pending Requests', 'buddypress' );
@@ -187,7 +185,7 @@ class BP_Friends_Component extends BP_Component {
 	/**
 	 * Sets up the title for pages and <title>
 	 *
-	 * @global BuddyPress $bp The one true BuddyPress instance
+	 * @global obj $bp
 	 */
 	function setup_title() {
 		global $bp;
@@ -198,22 +196,17 @@ class BP_Friends_Component extends BP_Component {
 				$bp->bp_options_title = __( 'Friendships', 'buddypress' );
 			} else {
 				$bp->bp_options_avatar = bp_core_fetch_avatar( array(
-					'item_id' => bp_displayed_user_id(),
-					'type'    => 'thumb',
-					'alt'     => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_displayed_user_fullname() )
+					'item_id' => $bp->displayed_user->id,
+					'type'    => 'thumb'
 				) );
-				$bp->bp_options_title = bp_get_displayed_user_fullname();
+				$bp->bp_options_title  = $bp->displayed_user->fullname;
 			}
 		}
 
 		parent::setup_title();
 	}
 }
-
-function bp_setup_friends() {
-	global $bp;
-	$bp->friends = new BP_Friends_Component();
-}
-add_action( 'bp_setup_components', 'bp_setup_friends', 6 );
+// Create the friends component
+$bp->friends = new BP_Friends_Component();
 
 ?>
