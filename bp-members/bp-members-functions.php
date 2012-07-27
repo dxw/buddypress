@@ -436,7 +436,7 @@ function bp_core_get_user_displayname( $user_id_or_username ) {
 add_filter( 'bp_core_get_user_displayname', 'strip_tags', 1 );
 add_filter( 'bp_core_get_user_displayname', 'trim'          );
 add_filter( 'bp_core_get_user_displayname', 'stripslashes'  );
-
+add_filter( 'bp_core_get_user_displayname', 'esc_html'      );
 
 /**
  * Returns the user link for the user based on user email address
@@ -504,7 +504,7 @@ function bp_core_get_active_member_count() {
 		$exclude_users = $wpdb->get_col( $sql );
 		$exclude_users_sql = !empty( $exclude_users ) ? $wpdb->prepare( "AND user_id NOT IN (" . implode( ',', wp_parse_id_list( $exclude_users ) ) . ")" ) : '';
 
-		$count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(user_id) FROM $wpdb->usermeta WHERE meta_key = 'last_activity' {$exclude_users_sql}" ) );
+		$count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(user_id) FROM $wpdb->usermeta WHERE meta_key = %s {$exclude_users_sql}", bp_get_user_meta_key( 'last_activity' ) ) );
 		set_transient( 'bp_active_member_count', $count );
 	}
 

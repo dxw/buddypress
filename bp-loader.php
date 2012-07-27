@@ -14,7 +14,7 @@
  * Description: Social networking in a box. Build a social network for your company, school, sports team or niche community all based on the power and flexibility of WordPress.
  * Author:      The BuddyPress Community
  * Author URI:  http://buddypress.org/community/members/
- * Version:     1.6-RC1
+ * Version:     1.6-RC2
  * Text Domain: buddypress
  * Domain Path: /bp-languages/
  */
@@ -52,7 +52,7 @@ class BuddyPress {
 	/**
 	 * @var string BuddyPress version
 	 */
-	public $version = '1.6-RC1';
+	public $version = '1.6-RC2';
 
 	/**
 	 * @var int Database version of current BuddyPress files
@@ -396,6 +396,12 @@ class BuddyPress {
 				require( $this->plugin_dir . 'bp-core/bp-core-update.php'    );
 				require( $this->plugin_dir . 'bp-core/bp-core-caps.php'      );
 				require( $this->plugin_dir . 'bp-core/bp-core-options.php'   );
+
+				/**
+				 * Textdomain is usually loaded via the bp_core_loaded action, but
+				 * that action isn't available when BP is in maintenance mode.
+				 */
+				add_action( 'plugins_loaded', 'bp_core_load_buddypress_textdomain', 9 );
 
 				// Load up BuddyPress's admin
 				add_action( 'plugins_loaded', 'bp_admin' );
