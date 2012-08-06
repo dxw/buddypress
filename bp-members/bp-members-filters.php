@@ -1,11 +1,12 @@
 <?php
+
 /**
  * BuddyPress Members Filters
  *
  * Member specific filters
  *
  * @package BuddyPress
- * @subpackage Member Core
+ * @subpackage MembersFilters
  */
 
 // Exit if accessed directly
@@ -23,7 +24,7 @@ add_filter( 'bp_get_loggedin_user_fullname', 'esc_html' );
  * allow for customization of your registration fields, however it is highly
  * recommended that you leave these in place for the safety of your network.
  *
- * @since BuddyPress (r4079)
+ * @since BuddyPress (1.5)
  * @uses add_filter()
  */
 function bp_members_signup_sanitization() {
@@ -54,7 +55,7 @@ add_action( 'bp_loaded', 'bp_members_signup_sanitization' );
 /**
  * Filter the user profile URL to point to BuddyPress profile edit
  *
- * @since BuddyPress 1.5.2
+ * @since BuddyPress 1.6
  *
  * @global BuddyPress $bp
  * @param string $url
