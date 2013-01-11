@@ -332,7 +332,7 @@ function bp_forums_total_topic_count() {
 			$groups_table_sql = '';
 			$groups_where_sql = "t.topic_status = 0";
 		}
-		$count = $bbdb->get_results( $bbdb->prepare( "SELECT t.topic_id FROM {$bbdb->topics} AS t {$groups_table_sql} WHERE {$groups_where_sql}" ) );
+		$count = $bbdb->get_results( "SELECT t.topic_id FROM {$bbdb->topics} AS t {$groups_table_sql} WHERE {$groups_where_sql}" );
 		$count = count( (array) $count );
 	} else {
 		$count = 0;
@@ -352,6 +352,8 @@ function bp_forums_total_topic_count() {
  * @param int $user_id The user id
  */
 function bp_forums_reply_exists( $text = '', $topic_id = 0, $user_id = 0 ) {
+	global $wpdb;
+
 	$reply_exists = false;
 	
 	if ( $text && $topic_id && $user_id ) {
@@ -363,8 +365,8 @@ function bp_forums_reply_exists( $text = '', $topic_id = 0, $user_id = 0 ) {
 		);
 		
 		// BB_Query's post_text parameter does a MATCH, while we need exact matches
-		add_filter( 'get_posts_where', create_function( '$q', 'return $q . " AND p.post_text = \'' . $text . '\'";' ) );
-		
+		add_filter( 'get_posts_where', create_function( '$q', 'return $q . " AND p.post_text = \'' . $wpdb->escape( $text ) . '\'";' ) );
+
 		$query = new BB_Query( 'post', $args );
 		
 		$reply_exists = !empty( $query->results );
