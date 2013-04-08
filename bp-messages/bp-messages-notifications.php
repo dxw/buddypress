@@ -31,6 +31,11 @@ function messages_notification_new_message( $args = array() ) {
 
 			// User data and links
 			$ud            = get_userdata( $recipient->user_id );
+
+			// Bail if user cannot be found
+			if ( empty( $ud ) )
+				continue;
+
 			$message_link  = bp_core_get_user_domain( $recipient->user_id ) . bp_get_messages_slug() .'/';
 			$settings_slug = function_exists( 'bp_get_settings_slug' ) ? bp_get_settings_slug() : 'settings';
 			$settings_link = bp_core_get_user_domain( $recipient->user_id ) . $settings_slug . '/notifications/';
@@ -42,8 +47,7 @@ function messages_notification_new_message( $args = array() ) {
 
 			// Set up and send the message
 			$email_to      = $ud->user_email;
-			$sitename      = wp_specialchars_decode( get_blog_option( bp_get_root_blog_id(), 'blogname' ), ENT_QUOTES );
-			$email_subject = '[' . $sitename . '] ' . sprintf( __( 'New message from %s', 'buddypress' ), $sender_name );
+			$email_subject = bp_get_email_subject( array( 'text' => sprintf( __( 'New message from %s', 'buddypress' ), $sender_name ) ) );
 
 			$email_content = sprintf( __(
 '%1$s sent you a new message:
@@ -70,5 +74,3 @@ To view and read your messages please log in and visit: %4$s
 
 	do_action( 'bp_messages_sent_notification_email', $recipients, $email_subject, $email_content, $args );
 }
-
-?>
