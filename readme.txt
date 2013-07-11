@@ -77,9 +77,6 @@ BuddyPress is available in more than 20 languages. For more information, check o
 
 == Upgrade Notice ==
 
-= 1.7.3 =
-See: http://codex.buddypress.org/releases/version-1-7-3/
-
 = 1.7.2 =
 See: http://codex.buddypress.org/releases/version-1-7-2/
 

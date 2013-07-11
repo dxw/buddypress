@@ -386,7 +386,7 @@ class BP_XProfile_Group {
 								</div>
 							</div>
 
-							<div id="postdiv" class="postarea">
+							<div id="postdiv">
 								<div class="postbox">
 									<div id="titlediv"><h3 class="hndle"><?php _e( 'Group Description', 'buddypress' ); ?></h3></div>
 									<div class="inside">
@@ -453,10 +453,9 @@ class BP_XProfile_Field {
 	function populate( $id, $user_id, $get_data ) {
 		global $wpdb, $userdata, $bp;
 
-		// @todo Why are we nooping the user_id ?
-		$user_id = 0;
-		if ( is_null( $user_id ) )
-			$user_id = $userdata->ID;
+		if ( empty( $user_id ) ) {
+			$user_id = isset( $userdata->ID ) ? $userdata->ID : 0;
+		}
 
 		$sql = $wpdb->prepare( "SELECT * FROM {$bp->profile->table_name_fields} WHERE id = %d", $id );
 
@@ -845,7 +844,7 @@ class BP_XProfile_Field {
 
 			<?php endif; ?>
 
-			<form action="<?php echo esc_url( $action ); ?>" method="post">
+			<form id="bp-xprofile-add-field" action="<?php echo esc_url( $action ); ?>" method="post">
 				<div id="poststuff">
 					<div id="titlediv">
 						<h3><label for="title"><?php _e( 'Field Title', 'buddypress' ); ?> *</label></h3>
@@ -905,7 +904,7 @@ class BP_XProfile_Field {
 
 									<?php foreach( bp_xprofile_get_visibility_levels() as $level ) : ?>
 
-										<li><input type="radio" name="default-visibility" value="<?php echo esc_attr( $level['id'] ) ?>" <?php checked( $this->default_visibility, $level['id'] ); ?>> <?php echo esc_html( $level['label'] ) ?></li>
+										<li><label><input type="radio" name="default-visibility" value="<?php echo esc_attr( $level['id'] ) ?>" <?php checked( $this->default_visibility, $level['id'] ); ?>> <?php echo esc_html( $level['label'] ) ?></label></li>
 
 									<?php endforeach ?>
 
@@ -915,8 +914,8 @@ class BP_XProfile_Field {
 							<div id="titlewrap">
 								<h3><label for="allow-custom-visibility"><?php _e( 'Per-Member Visibility', 'buddypress' ); ?></label></h3>
 								<ul>
-									<li><input type="radio" name="allow-custom-visibility" value="allowed"  <?php checked( $this->allow_custom_visibility, 'allowed'  ); ?>> <?php _e( "Let members change this field's visibility", 'buddypress' ); ?></li>
-									<li><input type="radio" name="allow-custom-visibility" value="disabled" <?php checked( $this->allow_custom_visibility, 'disabled' ); ?>> <?php _e( 'Enforce the default visibility for all members', 'buddypress' ); ?></li>
+									<li><label><input type="radio" name="allow-custom-visibility" value="allowed"  <?php checked( $this->allow_custom_visibility, 'allowed'  ); ?>> <?php _e( "Let members change this field's visibility", 'buddypress' ); ?></label></li>
+									<li><label><input type="radio" name="allow-custom-visibility" value="disabled" <?php checked( $this->allow_custom_visibility, 'disabled' ); ?>> <?php _e( 'Enforce the default visibility for all members', 'buddypress' ); ?></label></li>
 								</ul>
 							</div>
 						</div>
