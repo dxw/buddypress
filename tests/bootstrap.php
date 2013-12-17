@@ -1,19 +1,19 @@
 <?php
 
-define( 'BP_PLUGIN_DIR', dirname( dirname( __FILE__ ) ) . '/' );
+require( dirname( __FILE__ ) . '/includes/define-constants.php' );
 
-if ( ! defined( 'BP_TESTS_DIR' ) ) {
-	define( 'BP_TESTS_DIR', dirname( __FILE__ ) . '/' );
+if ( ! file_exists( WP_TESTS_DIR . '/includes/functions.php' ) ) {
+	die( "The WordPress PHPUnit test suite could not be found.\n" );
 }
 
-require_once getenv( 'WP_TESTS_DIR' ) . '/includes/functions.php';
+require_once WP_TESTS_DIR . '/includes/functions.php';
 
 function _install_and_load_buddypress() {
 	require BP_TESTS_DIR . '/includes/loader.php';
 }
 tests_add_filter( 'muplugins_loaded', '_install_and_load_buddypress' );
 
-require getenv( 'WP_TESTS_DIR' ) . '/includes/bootstrap.php';
+require WP_TESTS_DIR . '/includes/bootstrap.php';
 
 // Load the BP-specific testing tools
 require BP_TESTS_DIR . '/includes/testcase.php';

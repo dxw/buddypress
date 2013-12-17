@@ -1,6 +1,7 @@
 <?php
 /**
  * @group groups
+ * @group BP_Groups_Group
  */
 class BP_Tests_BP_Groups_Group_TestCases extends BP_UnitTestCase {
 	public function setUp() {
@@ -240,6 +241,7 @@ class BP_Tests_BP_Groups_Group_TestCases extends BP_UnitTestCase {
 	 * @group get
 	 */
 	public function test_get_with_type_newest() {
+		$time = time();
 		$g1 = $this->factory->group->create( array(
 			'name' => 'A Group',
 			'date_created' => bp_core_current_time(),
@@ -266,6 +268,7 @@ class BP_Tests_BP_Groups_Group_TestCases extends BP_UnitTestCase {
 	 * @group get
 	 */
 	public function test_get_with_type_popular() {
+		$time = time();
 		$g1 = $this->factory->group->create( array(
 			'name' => 'A Group',
 			'date_created' => bp_core_current_time(),
@@ -299,6 +302,8 @@ class BP_Tests_BP_Groups_Group_TestCases extends BP_UnitTestCase {
 	 * @ticket BP5099
 	 */
 	public function test_meta_query_and_total_groups() {
+		$time = time();
+
 		$g1 = $this->factory->group->create( array(
 			'name' => 'A Group',
 			'date_created' => bp_core_current_time(),
@@ -539,7 +544,7 @@ class BP_Tests_BP_Groups_Group_TestCases extends BP_UnitTestCase {
 		) );
 		$g2 = $this->factory->group->create();
 
-		$groups = BP_Groups_Group::search_groups( '_cool_', $u );
+		$groups = BP_Groups_Group::search_groups( '_cool_' );
 
 		$found = wp_list_pluck( $groups['groups'], 'group_id' );
 		$this->assertEquals( array( $g1 ), $found );
@@ -552,7 +557,7 @@ class BP_Tests_BP_Groups_Group_TestCases extends BP_UnitTestCase {
 		) );
 		$g2 = $this->factory->group->create();
 
-		$groups = BP_Groups_Group::search_groups( '100%', $u );
+		$groups = BP_Groups_Group::search_groups( '100%' );
 
 		$found = wp_list_pluck( $groups['groups'], 'group_id' );
 		$this->assertEquals( array( $g1 ), $found );
@@ -565,7 +570,7 @@ class BP_Tests_BP_Groups_Group_TestCases extends BP_UnitTestCase {
 		) );
 		$g2 = $this->factory->group->create();
 
-		$groups = BP_Groups_Group::search_groups( "'tis ", $u );
+		$groups = BP_Groups_Group::search_groups( "'tis " );
 
 		$found = wp_list_pluck( $groups['groups'], 'group_id' );
 
@@ -642,11 +647,11 @@ class BP_Tests_BP_Groups_Group_TestCases extends BP_UnitTestCase {
  * Stub class for accessing protected methods
  */
 class _BP_Groups_Group extends BP_Groups_Group {
-	public function _convert_type_to_order_orderby( $type ) {
+	static public function _convert_type_to_order_orderby( $type ) {
 		return self::convert_type_to_order_orderby( $type );
 	}
 
-	public function _convert_orderby_to_order_by_term( $term ) {
+	static public function _convert_orderby_to_order_by_term( $term ) {
 		return self::convert_orderby_to_order_by_term( $term );
 	}
 }

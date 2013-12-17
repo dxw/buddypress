@@ -10,6 +10,9 @@ require_once dirname( __FILE__ ) . '/factory.php';
 
 class BP_UnitTestCase extends WP_UnitTestCase {
 
+	protected $temp_has_bp_moderate = array();
+	protected $cached_SERVER_NAME = null;
+
 	public function setUp() {
 		parent::setUp();
 
@@ -20,6 +23,10 @@ class BP_UnitTestCase extends WP_UnitTestCase {
 		// hack workaround
 		global $wpdb;
 		$wpdb->query( "TRUNCATE TABLE {$wpdb->users}" );
+
+		// Fake WP mail globals, to avoid errors
+		add_filter( 'wp_mail', array( $this, 'setUp_wp_mail' ) );
+		add_filter( 'wp_mail_from', array( $this, 'tearDown_wp_mail' ) );
 
 		$this->factory = new BP_UnitTest_Factory;
 	}
@@ -130,9 +137,9 @@ class BP_UnitTestCase extends WP_UnitTestCase {
 		}
 
 		unset($GLOBALS['wp_query'], $GLOBALS['wp_the_query']);
-		$GLOBALS['wp_the_query'] =& new WP_Query();
-		$GLOBALS['wp_query'] =& $GLOBALS['wp_the_query'];
-		$GLOBALS['wp'] =& new WP();
+		$GLOBALS['wp_the_query'] = new WP_Query();
+		$GLOBALS['wp_query'] = $GLOBALS['wp_the_query'];
+		$GLOBALS['wp'] = new WP();
 
 		// clean out globals to stop them polluting wp and wp_query
 		foreach ($GLOBALS['wp']->public_query_vars as $v) {
@@ -213,7 +220,7 @@ class BP_UnitTestCase extends WP_UnitTestCase {
 
 		$user_id = $this->factory->user->create( $args );
 
-		update_user_meta( $user_id, 'last_activity', $last_activity );
+		bp_update_user_last_activity( $user_id, $last_activity );
 
 		if ( bp_is_active( 'xprofile' ) ) {
 			$user = new WP_User( $user_id );
@@ -263,6 +270,33 @@ class BP_UnitTestCase extends WP_UnitTestCase {
 		unset( $GLOBALS['super_admins'] );
 	}
 
+	public function grant_bp_moderate( $user_id ) {
+		if ( ! isset( $this->temp_has_bp_moderate[ $user_id ] ) ) {
+			$this->temp_has_bp_moderate[ $user_id ] = 1;
+		}
+		add_filter( 'bp_current_user_can', array( $this, 'grant_bp_moderate_cb' ), 10, 2 );
+	}
+
+	public function revoke_bp_moderate( $user_id ) {
+		if ( isset( $this->temp_has_bp_moderate[ $user_id ] ) ) {
+			unset( $this->temp_has_bp_moderate[ $user_id ] );
+		}
+		remove_filter( 'bp_current_user_can', array( $this, 'grant_bp_moderate_cb' ), 10, 2 );
+	}
+
+	public function grant_bp_moderate_cb( $retval, $capability ) {
+		$current_user = bp_loggedin_user_id();
+		if ( ! isset( $this->temp_has_bp_moderate[ $current_user ] ) ) {
+			return $retval;
+		}
+
+		if ( 'bp_moderate' == $capability ) {
+			$retval = true;
+		}
+
+		return $retval;
+	}
+
 	/**
 	 * Go to the root blog. This helps reset globals after moving between
 	 * blogs.
@@ -270,5 +304,34 @@ class BP_UnitTestCase extends WP_UnitTestCase {
 	public function go_to_root() {
 		$blog_1_url = get_blog_option( 1, 'home' );
 		$this->go_to( str_replace( $blog_1_url, '', trailingslashit( bp_get_root_domain() ) ) );
+	}
+
+	/**
+	 * Set up globals necessary to avoid errors when using wp_mail()
+	 */
+	public function setUp_wp_mail( $args ) {
+		if ( isset( $_SERVER['SERVER_NAME'] ) ) {
+			$this->cached_SERVER_NAME = $_SERVER['SERVER_NAME'];
+		}
+
+		$_SERVER['SERVER_NAME'] = 'example.com';
+
+		// passthrough
+		return $args;
+	}
+
+	/**
+	 * Tear down globals set up in setUp_wp_mail()
+	 */
+	public function tearDown_wp_mail( $args ) {
+		if ( ! empty( $this->cached_SERVER_NAME ) ) {
+			$_SERVER['SERVER_NAME'] = $this->cached_SERVER_NAME;
+			unset( $this->cached_SERVER_NAME );
+		} else {
+			unset( $_SERVER['SERVER_NAME'] );
+		}
+
+		// passthrough
+		return $args;
 	}
 }

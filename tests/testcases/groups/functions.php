@@ -152,9 +152,9 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	public function test_total_member_count_groups_leave_group() {
 		$u1 = $this->create_user();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
-		groups_join_group( $g1, $u2 );
+		groups_join_group( $g1, $u1 );
 
-		groups_leave_group( $g1, $u2 );
+		groups_leave_group( $g1, $u1 );
 		$this->assertEquals( 1, groups_get_groupmeta( $g1, 'total_member_count' ) );
 	}
 
@@ -225,8 +225,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 		$u1 = $this->create_user();
 		$u2 = $this->create_user();
 		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
-		groups_send_membership_request( $u2, $g );
 
+		groups_send_membership_request( $u2, $g );
 		groups_accept_membership_request( 0, $u2, $g );
 
 		$this->assertEquals( 2, groups_get_groupmeta( $g, 'total_member_count' ) );
@@ -268,5 +268,19 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 		) );
 
 		$this->assertEquals( 1, groups_get_groupmeta( $g, 'total_member_count' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @ticket BP5180
+	 */
+	public function test_groups_update_groupmeta_with_line_breaks() {
+		$g = $this->factory->group->create();
+		$meta_value = 'Foo!
+
+Bar!';
+		groups_update_groupmeta( $g, 'linebreak_test', $meta_value );
+
+		$this->assertEquals( $meta_value, groups_get_groupmeta( $g, 'linebreak_test' ) );
 	}
 }
