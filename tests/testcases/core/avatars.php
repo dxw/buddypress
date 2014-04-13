@@ -30,7 +30,7 @@ class BP_Tests_Avatars extends BP_UnitTestCase {
 
 		// switch to BP root blog if necessary
 		if ( bp_get_root_blog_id() != get_current_blog_id() ) {
-			$this->go_to_root();
+			$this->go_to( '/' );
 		}
 
 		// get BP root blog's upload directory data
@@ -51,6 +51,32 @@ class BP_Tests_Avatars extends BP_UnitTestCase {
 		$this->assertEquals( $upload_dir['baseurl'], bp_core_avatar_url() );
 
 		// reset globals
-		$this->go_to_root();
+		$this->go_to( '/' );
+	}
+
+	/**
+	 * @group bp_get_user_has_avatar
+	 */
+	public function test_bp_get_user_has_avatar_no_avatar_uploaded() {
+		$u = $this->create_user();
+		$this->assertFalse( bp_get_user_has_avatar( $u ) );
+	}
+
+	/**
+	 * @group bp_get_user_has_avatar
+	 */
+	public function test_bp_get_user_has_avatar_has_avatar_uploaded() {
+		$u = $this->create_user();
+
+		// Fake it
+		add_filter( 'bp_core_fetch_avatar_url', array( $this, 'avatar_cb' ) );
+
+		$this->assertTrue( bp_get_user_has_avatar( $u ) );
+
+		remove_filter( 'bp_core_fetch_avatar_url', array( $this, 'avatar_cb' ) );
+	}
+
+	public function avatar_cb() {
+		return 'foo';
 	}
 }

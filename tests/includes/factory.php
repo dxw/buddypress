@@ -10,6 +10,7 @@ class BP_UnitTest_Factory extends WP_UnitTest_Factory {
 		$this->xprofile_group = new BP_UnitTest_Factory_For_XProfileGroup( $this );
 		$this->xprofile_field = new BP_UnitTest_Factory_For_XProfileField( $this );
 		$this->notification = new BP_UnitTest_Factory_For_Notification( $this );
+		$this->signup = new BP_UnitTest_Factory_For_Signup( $this );
 	}
 }
 
@@ -19,7 +20,6 @@ class BP_UnitTest_Factory_For_Activity extends WP_UnitTest_Factory_For_Thing {
 		parent::__construct( $factory );
 
 		$this->default_generation_definitions = array(
-			'action'       => new WP_UnitTest_Generator_Sequence( 'Activity action %s' ),
 			'component'    => buddypress()->activity->id,
 			'content'      => new WP_UnitTest_Generator_Sequence( 'Activity content %s' ),
 			'primary_link' => 'http://example.com',
@@ -113,7 +113,7 @@ class BP_UnitTest_Factory_For_XProfileGroup extends WP_UnitTest_Factory_For_Thin
 
 	function create_object( $args ) {
 		$group_id = xprofile_insert_field_group( $args );
-		return $this->get_object_by_id( $group_id );
+		return $group_id;
 	}
 
 	function update_object( $group_id, $fields ) {
@@ -137,7 +137,7 @@ class BP_UnitTest_Factory_For_XProfileField extends WP_UnitTest_Factory_For_Thin
 
 	function create_object( $args ) {
 		$field_id = xprofile_insert_field( $args );
-		return $this->get_object_by_id( $field_id );
+		return $field_id;
 	}
 
 	function update_object( $field_id, $fields ) {
@@ -161,5 +161,21 @@ class BP_UnitTest_Factory_For_Notification extends WP_UnitTest_Factory_For_Thing
 
 	public function get_object_by_id( $id ) {
 		return new BP_Notifications_Notification( $id );
+	}
+}
+
+class BP_UnitTest_Factory_For_Signup extends WP_UnitTest_Factory_For_Thing {
+	public function __construct( $factory = null ) {
+		parent::__construct( $factory );
+	}
+
+	public function create_object( $args ) {
+		return BP_Signup::add( $args );
+	}
+
+	public function update_object( $id, $fields ) {}
+
+	public function get_object_by_id( $id ) {
+		return new BP_Signup( $id );
 	}
 }

@@ -4,6 +4,17 @@
  * @group BP_Group_Member_Query
  */
 class BP_Tests_BP_Group_Member_Query_TestCases extends BP_UnitTestCase {
+	public function setUp() {
+		$this->current_user = get_current_user_id();
+		$this->set_current_user( 0 );
+		parent::setUp();
+	}
+
+	public function tearDown() {
+		$this->set_current_user( $this->current_user );
+		parent::tearDown();
+	}
+
 	/**
 	 * Make sure that a manual 'include' param is parsed correctly with
 	 * BP_Group_Member_Query's limiting of the query to group members
@@ -260,6 +271,9 @@ class BP_Tests_BP_Group_Member_Query_TestCases extends BP_UnitTestCase {
 		$this->assertEquals( array( $u1, $u2, $u3, $u4, ), $ids );
 	}
 
+	/**
+	 * @group role
+	 */
 	public function test_with_group_role_banned() {
 		$g = $this->factory->group->create();
 		$u1 = $this->create_user();
@@ -334,4 +348,262 @@ class BP_Tests_BP_Group_Member_Query_TestCases extends BP_UnitTestCase {
 		$this->assertEquals( array( $u2 ), $ids );
 	}
 
+	/**
+	 * @group type
+	 */
+	public function test_get_with_type_last_joined() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$time = time();
+
+		$this->add_user_to_group( $u1, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 500 ),
+		) );
+
+		$this->add_user_to_group( $u2, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+		) );
+
+		$query_members = new BP_Group_Member_Query( array(
+			'group_id' => $g,
+			'type' => 'last_joined',
+		) );
+
+		$ids = wp_parse_id_list( array_keys( $query_members->results ) );
+		$this->assertEquals( array( $u2, $u1 ), $ids );
+	}
+
+	/**
+	 * @group type
+	 */
+	public function test_get_with_type_first_joined() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$time = time();
+
+		$this->add_user_to_group( $u1, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 500 ),
+		) );
+
+		$this->add_user_to_group( $u2, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+		) );
+
+		$query_members = new BP_Group_Member_Query( array(
+			'group_id' => $g,
+			'type' => 'first_joined',
+		) );
+
+		$ids = wp_parse_id_list( array_keys( $query_members->results ) );
+		$this->assertEquals( array( $u1, $u2 ), $ids );
+	}
+
+	/**
+	 * @group type
+	 */
+	public function test_get_with_type_alphabetical() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user( array(
+			'display_name' => 'AAA',
+		) );
+		$u2 = $this->create_user( array(
+			'display_name' => 'CCC',
+		) );
+		$u3 = $this->create_user( array(
+			'display_name' => 'BBB',
+		) );
+		$time = time();
+
+		$this->add_user_to_group( $u1, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+		) );
+
+		$this->add_user_to_group( $u2, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 200 ),
+		) );
+
+		$this->add_user_to_group( $u3, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 300 ),
+		) );
+
+		$query_members = new BP_Group_Member_Query( array(
+			'group_id' => $g,
+			'type' => 'alphabetical',
+		) );
+
+		$ids = wp_parse_id_list( array_keys( $query_members->results ) );
+		$this->assertEquals( array( $u1, $u3, $u2 ), $ids );
+	}
+
+	/**
+	 * @group invite_sent
+	 */
+	public function test_with_invite_sent_true() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$time = time();
+
+		$this->add_user_to_group( $u1, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+			'is_confirmed' => 0,
+			'invite_sent' => 0,
+		) );
+
+		$this->add_user_to_group( $u2, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+			'is_confirmed' => 0,
+			'invite_sent' => 1,
+		) );
+
+		$query_members = new BP_Group_Member_Query( array(
+			'group_id' => $g,
+			'is_confirmed' => false,
+			'invite_sent' => true,
+		) );
+
+		$ids = wp_parse_id_list( array_keys( $query_members->results ) );
+		$this->assertEquals( array( $u2 ), $ids );
+	}
+
+	/**
+	 * @group invite_sent
+	 */
+	public function test_with_invite_sent_false() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$time = time();
+
+		$this->add_user_to_group( $u1, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+			'is_confirmed' => 0,
+			'invite_sent' => 0,
+		) );
+
+		$this->add_user_to_group( $u2, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+			'is_confirmed' => 0,
+			'invite_sent' => 1,
+		) );
+
+		$query_members = new BP_Group_Member_Query( array(
+			'group_id' => $g,
+			'is_confirmed' => false,
+			'invite_sent' => false,
+		) );
+
+		$ids = wp_parse_id_list( array_keys( $query_members->results ) );
+		$this->assertEquals( array( $u1 ), $ids );
+	}
+
+	/**
+	 * @group inviter_id
+	 */
+	public function test_with_inviter_id_false() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$time = time();
+
+		$this->add_user_to_group( $u1, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+			'inviter_id' => 0,
+		) );
+
+		$this->add_user_to_group( $u2, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+			'inviter_id' => 1,
+		) );
+
+		$query_members = new BP_Group_Member_Query( array(
+			'group_id' => $g,
+			'inviter_id' => false,
+		) );
+
+		$ids = wp_parse_id_list( array_keys( $query_members->results ) );
+		$this->assertEquals( array( $u1 ), $ids );
+	}
+
+	/**
+	 * @group inviter_id
+	 */
+	public function test_with_inviter_id_specific() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$u3 = $this->create_user();
+		$u4 = $this->create_user();
+		$time = time();
+
+		$this->add_user_to_group( $u1, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+			'inviter_id' => 0,
+		) );
+
+		$this->add_user_to_group( $u2, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 200 ),
+			'inviter_id' => 1,
+		) );
+
+		$this->add_user_to_group( $u3, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 300 ),
+			'inviter_id' => 6,
+		) );
+
+		$this->add_user_to_group( $u4, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 400 ),
+			'inviter_id' => 2,
+		) );
+
+		$query_members = new BP_Group_Member_Query( array(
+			'group_id' => $g,
+			'inviter_id' => array( 2, 6 ),
+		) );
+
+		$ids = wp_parse_id_list( array_keys( $query_members->results ) );
+		$this->assertEquals( array( $u3, $u4 ), $ids );
+	}
+
+	/**
+	 * @group inviter_id
+	 */
+	public function test_with_inviter_id_any() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$u3 = $this->create_user();
+		$u4 = $this->create_user();
+		$time = time();
+
+		$this->add_user_to_group( $u1, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 100 ),
+			'inviter_id' => 0,
+		) );
+
+		$this->add_user_to_group( $u2, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 200 ),
+			'inviter_id' => 1,
+		) );
+
+		$this->add_user_to_group( $u3, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 300 ),
+			'inviter_id' => 6,
+		) );
+
+		$this->add_user_to_group( $u4, $g, array(
+			'date_modified' => gmdate( 'Y-m-d H:i:s', $time - 400 ),
+			'inviter_id' => 2,
+		) );
+
+		$query_members = new BP_Group_Member_Query( array(
+			'group_id' => $g,
+			'inviter_id' => 'any',
+		) );
+
+		$ids = wp_parse_id_list( array_keys( $query_members->results ) );
+		$this->assertEquals( array( $u2, $u3, $u4 ), $ids );
+	}
 }

@@ -30,45 +30,18 @@ function wp_test_bp_install( $value ) {
 }
 tests_add_filter( 'bp_new_install_default_components', 'wp_test_bp_install' );
 
+tests_add_filter( 'bp_get_signup_allowed', '__return_true' );
+
 $_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
 $_SERVER['HTTP_HOST'] = WP_TESTS_DOMAIN;
 $PHP_SELF = $GLOBALS['PHP_SELF'] = $_SERVER['PHP_SELF'] = '/index.php';
 
 require_once ABSPATH . '/wp-settings.php';
-define( 'BP_TESTS_DB_VERSION_FILE', ABSPATH . '.bp-tests-version' );
-
-// Check if BuddyPress has already been installed
-$db_version = buddypress()->db_version;
-$hash = $db_version . ' ' . (int) $multisite . ' ' . sha1_file( $config_file_path );
-
-if ( $db_version && file_exists( BP_TESTS_DB_VERSION_FILE ) ) {
-	$version_file = file_get_contents( BP_TESTS_DB_VERSION_FILE );
-
-	if ( $hash === $version_file ) {
-		return;
-	}
-}
 
 echo "Installing BuddyPress...\n";
-
-// Make sure that BP has been cleaned from all blogs before reinstalling
-$blogs = is_multisite() ? $wpdb->get_col( "SELECT blog_id FROM {$wpdb->blogs}" ) : array( 1 );
-foreach ( $blogs as $blog ) {
-	if ( is_multisite() ) {
-		switch_to_blog( $blog );
-	}
-
-	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '%bp%'" );
-
-	if ( is_multisite() ) {
-		restore_current_blog();
-	}
-}
 
 $wpdb->query( 'SET storage_engine = INNODB' );
 $wpdb->select( DB_NAME, $wpdb->dbh );
 
 // Install BuddyPress
 bp_version_updater();
-
-file_put_contents( BP_TESTS_DB_VERSION_FILE, $hash );

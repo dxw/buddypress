@@ -283,4 +283,327 @@ Bar!';
 
 		$this->assertEquals( $meta_value, groups_get_groupmeta( $g, 'linebreak_test' ) );
 	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_update_groupmeta_non_numeric_id() {
+		$this->assertFalse( groups_update_groupmeta( 'foo', 'bar', 'baz' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_update_groupmeta_stripslashes() {
+		$g = $this->factory->group->create();
+		$value = "This string is totally slashin\'!";
+		groups_update_groupmeta( $g, 'foo', $value );
+
+		$this->assertSame( stripslashes( $value ), groups_get_groupmeta( $g, 'foo' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_update_groupmeta_new() {
+		$g = $this->factory->group->create();
+		$this->assertSame( '', groups_get_groupmeta( $g, 'foo' ), '"foo" meta should be empty for this group.' );
+		$this->assertNotEmpty( groups_update_groupmeta( $g, 'foo', 'bar' ) );
+		$this->assertSame( 'bar', groups_get_groupmeta( $g, 'foo' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_update_groupmeta_existing() {
+		$g = $this->factory->group->create();
+		groups_update_groupmeta( $g, 'foo', 'bar' );
+		$this->assertSame( 'bar', groups_get_groupmeta( $g, 'foo' ), '"foo" meta should be set already for this group.' );
+		$this->assertTrue( groups_update_groupmeta( $g, 'foo', 'baz' ) );
+		$this->assertSame( 'baz', groups_get_groupmeta( $g, 'foo' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_update_groupmeta_existing_same_value() {
+		$g = $this->factory->group->create();
+		groups_update_groupmeta( $g, 'foo', 'bar' );
+		$this->assertSame( 'bar', groups_get_groupmeta( $g, 'foo' ), '"foo" meta should be set already for this group.' );
+		$this->assertFalse( groups_update_groupmeta( $g, 'foo', 'bar' ) );
+		$this->assertSame( 'bar', groups_get_groupmeta( $g, 'foo' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_update_groupmeta
+	 */
+	public function test_groups_update_groupmeta_prev_value() {
+		$g = $this->factory->group->create();
+		groups_add_groupmeta( $g, 'foo', 'bar' );
+
+		// In earlier versions of WordPress, bp_activity_update_meta()
+		// returns true even on failure. However, we know that in these
+		// cases the update is failing as expected, so we skip this
+		// assertion just to keep our tests passing
+		// See https://core.trac.wordpress.org/ticket/24933
+		if ( version_compare( $GLOBALS['wp_version'], '3.7', '>=' ) ) {
+			$this->assertFalse( groups_update_groupmeta( $g, 'foo', 'bar2', 'baz' ) );
+		}
+
+		$this->assertTrue( groups_update_groupmeta( $g, 'foo', 'bar2', 'bar' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_get_groupmeta
+	 * @ticket BP5399
+	 */
+	public function test_groups_get_groupmeta_with_illegal_key_characters() {
+		$g = $this->factory->group->create();
+		groups_update_groupmeta( $g, 'foo', 'bar' );
+
+		$krazy_key = ' f!@#$%^o *(){}o?+';
+		$this->assertSame( '', groups_get_groupmeta( $g, $krazy_key ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_get_groupmeta_all_metas() {
+		$g = $this->factory->group->create();
+		groups_update_groupmeta( $g, 'foo', 'bar' );
+		groups_update_groupmeta( $g, 'Boone', 'is cool' );
+
+		// There's likely some other keys (total_member_count etc)
+		// Just check to make sure both of ours are there
+		$metas = groups_get_groupmeta( $g );
+		$count = count( $metas );
+		$found = array_slice( $metas, $count - 2 );
+
+		$expected = array(
+			'foo' => array(
+				'bar',
+			),
+			'Boone' => array(
+				'is cool',
+			),
+		);
+
+		$this->assertSame( $expected, $found );
+	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_get_groupmeta_all_metas_empty() {
+		$g = $this->factory->group->create();
+
+		// Get rid of any auto-created values
+		global $wpdb, $bp;
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$bp->groups->table_name_groupmeta} WHERE group_id = %d", $g ) );
+		wp_cache_delete( $g, 'group_meta' );
+
+		$metas = groups_get_groupmeta( $g );
+		$this->assertSame( array(), $metas );
+	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_get_groupmeta_empty() {
+		$g = $this->factory->group->create();
+		$this->assertSame( '', groups_get_groupmeta( $g, 'foo' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_get_groupmeta
+	 */
+	public function test_bp_activity_get_meta_single_true() {
+		$g = $this->factory->group->create();
+		groups_add_groupmeta( $g, 'foo', 'bar' );
+		groups_add_groupmeta( $g, 'foo', 'baz' );
+		$this->assertSame( 'bar', groups_get_groupmeta( $g, 'foo' ) ); // default is true
+		$this->assertSame( 'bar', groups_get_groupmeta( $g, 'foo', true ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_get_groupmeta
+	 */
+	public function test_bp_activity_get_meta_single_false() {
+		$g = $this->factory->group->create();
+		groups_add_groupmeta( $g, 'foo', 'bar' );
+		groups_add_groupmeta( $g, 'foo', 'baz' );
+		$this->assertSame( array( 'bar', 'baz' ), groups_get_groupmeta( $g, 'foo', false ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_get_groupmeta
+	 * @group cache
+	 */
+	public function test_groups_get_groupmeta_cache_all_on_get() {
+		$g = $this->factory->group->create();
+		groups_add_groupmeta( $g, 'foo', 'bar' );
+		groups_add_groupmeta( $g, 'foo1', 'baz' );
+		$this->assertFalse( wp_cache_get( $g, 'group_meta' ) );
+
+		// A single query should prime the whole meta cache
+		groups_get_groupmeta( $g, 'foo' );
+
+		$c = wp_cache_get( $g, 'group_meta' );
+		$this->assertNotEmpty( $c['foo1'] );
+	}
+
+	/**
+	 * @group groupmeta
+	 */
+	public function test_groups_delete_groupmeta_non_numeric_id() {
+		$this->assertFalse( groups_delete_groupmeta( 'foo', 'bar' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_delete_groupmeta
+	 * @ticket BP5399
+	 */
+	public function test_groups_delete_groupmeta_with_illegal_key_characters() {
+		$g = $this->factory->group->create();
+		$this->assertNotEmpty( groups_update_groupmeta( $g, 'foo', 'bar' ), 'Value of "foo" should be set at this point.' );
+
+		$krazy_key = ' f!@#$%^o *(){}o?+';
+		$this->assertSame( 'bar', groups_get_groupmeta( $g, 'foo' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_delete_groupmeta
+	 */
+	public function test_groups_delete_groupmeta_with_delete_all_but_no_meta_key() {
+		// With no meta key, don't delete for all items - just delete
+		// all for a single item
+		$g1 = $this->factory->group->create();
+		$g2 = $this->factory->group->create();
+		groups_add_groupmeta( $g1, 'foo', 'bar' );
+		groups_add_groupmeta( $g1, 'foo1', 'bar1' );
+		groups_add_groupmeta( $g2, 'foo', 'bar' );
+		groups_add_groupmeta( $g2, 'foo1', 'bar1' );
+
+		$this->assertTrue( groups_delete_groupmeta( $g1, '', '', true ) );
+		$this->assertEmpty( groups_get_groupmeta( $g1 ) );
+		$this->assertSame( 'bar', groups_get_groupmeta( $g2, 'foo' ) );
+		$this->assertSame( 'bar1', groups_get_groupmeta( $g2, 'foo1' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_delete_groupmeta
+	 */
+	public function test_groups_delete_groupmeta_with_delete_all() {
+		// With no meta key, don't delete for all items - just delete
+		// all for a single item
+		$g1 = $this->factory->group->create();
+		$g2 = $this->factory->group->create();
+		groups_add_groupmeta( $g1, 'foo', 'bar' );
+		groups_add_groupmeta( $g1, 'foo1', 'bar1' );
+		groups_add_groupmeta( $g2, 'foo', 'bar' );
+		groups_add_groupmeta( $g2, 'foo1', 'bar1' );
+
+		$this->assertTrue( groups_delete_groupmeta( $g1, 'foo', '', true ) );
+		$this->assertSame( '', groups_get_groupmeta( $g1, 'foo' ) );
+		$this->assertSame( '', groups_get_groupmeta( $g2, 'foo' ) );
+		$this->assertSame( 'bar1', groups_get_groupmeta( $g1, 'foo1' ) );
+		$this->assertSame( 'bar1', groups_get_groupmeta( $g2, 'foo1' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_add_groupmeta
+	 */
+	public function test_groups_add_groupmeta_no_meta_key() {
+		$this->assertFalse( groups_add_groupmeta( 1, '', 'bar' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_add_groupmeta
+	 */
+	public function test_groups_add_groupmeta_empty_object_id() {
+		$this->assertFalse( groups_add_groupmeta( 0, 'foo', 'bar' ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_add_groupmeta
+	 */
+	public function test_groups_add_groupmeta_existing_unique() {
+		$g = $this->factory->group->create();
+		groups_add_groupmeta( $g, 'foo', 'bar' );
+		$this->assertFalse( groups_add_groupmeta( $g, 'foo', 'baz', true ) );
+	}
+
+	/**
+	 * @group groupmeta
+	 * @group groups_add_groupmeta
+	 */
+	public function test_groups_add_groupmeta_existing_not_unique() {
+		$g = $this->factory->group->create();
+		groups_add_groupmeta( $g, 'foo', 'bar' );
+		$this->assertNotEmpty( groups_add_groupmeta( $g, 'foo', 'baz' ) );
+	}
+
+	/**
+	 * @group groups_get_group
+	 * @group cache
+	 */
+	public function test_groups_get_group_cache_different_users() {
+		$g = $this->factory->group->create();
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$this->add_user_to_group( $u1, $g );
+
+		$old_user = get_current_user_id();
+		$this->set_current_user( $u1 );
+
+		$group1 = groups_get_group( array( 'group_id' => $g, 'populate_extras' => true ) );
+
+		$this->set_current_user( $u2 );
+
+		$group2 = groups_get_group( array( 'group_id' => $g, 'populate_extras' => true ) );
+
+		$this->assertNotEquals( $group1, $group2 );
+
+		$this->set_current_user( $old_user );
+	}
+
+	/**
+	 * @group counts
+	 */
+	public function test_get_invite_count_for_user() {
+		$u1 = $this->create_user();
+		$u2 = $this->create_user();
+		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
+
+		// create invitation
+		groups_invite_user( array(
+			'user_id'    => $u2,
+			'group_id'   => $g,
+			'inviter_id' => $u1,
+		) );
+
+		// send the invite
+		// this function is imperative to set the 'invite_sent' flag in the DB
+		// why is this separated from groups_invite_user()?
+		// @see groups_screen_group_invite()
+		groups_send_invites( $u1, $g );
+
+		// assert invite count
+		$this->assertEquals( 1, groups_get_invite_count_for_user( $u2 ) );
+
+		// accept the invite and reassert
+		groups_accept_invite( $u2, $g );
+		$this->assertEquals( 0, groups_get_invite_count_for_user( $u2 ) );
+	}
 }
