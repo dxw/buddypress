@@ -18,7 +18,8 @@ class BP_Tests_Members_Functions extends BP_UnitTestCase {
 	}
 
 	/**
-	 * ticket BP4915
+	 * @ticket BP4915
+	 * @group bp_core_delete_account
 	 */
 	public function test_bp_core_delete_account() {
 		// Stash
@@ -52,24 +53,6 @@ class BP_Tests_Members_Functions extends BP_UnitTestCase {
 		bp_core_delete_account( $user4 );
 		$maybe_user = new WP_User( $user4 );
 		$this->assertNotEquals( 0, $maybe_user->ID );
-		unset( $maybe_user );
-
-		// User cannot delete own account when account deletion is disabled
-		$user5 = $this->factory->user->create( array( 'role' => 'subscriber' ) );
-		$this->set_current_user( $user5 );
-		bp_update_option( 'bp-disable-account-deletion', 1 );
-		bp_core_delete_account( $user5 );
-		$maybe_user = new WP_User( $user5 );
-		$this->assertNotEquals( 0, $maybe_user->ID );
-		unset( $maybe_user );
-
-		// User can delete own account when account deletion is enabled
-		$user6 = $this->factory->user->create( array( 'role' => 'subscriber' ) );
-		$this->set_current_user( $user6 );
-		bp_update_option( 'bp-disable-account-deletion', 0 );
-		bp_core_delete_account( $user6 );
-		$maybe_user = new WP_User( $user6 );
-		$this->assertEquals( 0, $maybe_user->ID );
 		unset( $maybe_user );
 
 		// Cleanup
@@ -278,5 +261,96 @@ class BP_Tests_Members_Functions extends BP_UnitTestCase {
 		);
 
 		$this->assertSame( $expected, bp_core_get_user_displaynames( array( $u1, $u2, ) ) );
+	}
+
+	/**
+	 * @group bp_members_migrate_signups
+	 */
+	public function test_bp_members_migrate_signups_standard() {
+		$u = $this->create_user();
+		$u_obj = new WP_User( $u );
+
+		// Fake an old-style registration
+		$key = wp_hash( $u_obj->ID );
+		update_user_meta( $u, 'activation_key', $key );
+
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->users,
+			array( 'user_status' => '2', ),
+			array( 'ID' => $u, ),
+			array( '%d', ),
+			array( '%d', )
+		);
+		clean_user_cache( $u );
+
+		bp_members_migrate_signups();
+
+		$found = BP_Signup::get();
+
+		// Use email address as a sanity check
+		$found_email = isset( $found['signups'][0]->user_email ) ? $found['signups'][0]->user_email : '';
+		$this->assertSame( $u_obj->user_email, $found_email );
+
+		// Check that activation keys match
+		$found_key = isset( $found['signups'][0]->activation_key ) ? $found['signups'][0]->activation_key : '';
+		$this->assertSame( $key, $found_key );
+	}
+
+	/**
+	 * @group bp_members_migrate_signups
+	 */
+	public function test_bp_members_migrate_signups_activation_key_but_user_status_0() {
+		$u = $this->create_user();
+		$u_obj = new WP_User( $u );
+
+		// Fake an old-style registration
+		$key = wp_hash( $u_obj->ID );
+		update_user_meta( $u, 'activation_key', $key );
+
+		// ...but ensure that user_status is 0. This mimics the
+		// behavior of certain plugins that disrupt the BP registration
+		// flow
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->users,
+			array( 'user_status' => '0', ),
+			array( 'ID' => $u, ),
+			array( '%d', ),
+			array( '%d', )
+		);
+		clean_user_cache( $u );
+
+		bp_members_migrate_signups();
+
+		// No migrations should have taken place
+		$found = BP_Signup::get();
+		$this->assertEmpty( $found['total'] );
+	}
+
+	/**
+	 * @group bp_members_migrate_signups
+	 */
+	public function test_bp_members_migrate_signups_no_activation_key_but_user_status_2() {
+		$u = $this->create_user();
+		$u_obj = new WP_User( $u );
+
+		// Fake an old-style registration but without an activation key
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->users,
+			array( 'user_status' => '2', ),
+			array( 'ID' => $u, ),
+			array( '%d', ),
+			array( '%d', )
+		);
+		clean_user_cache( $u );
+
+		bp_members_migrate_signups();
+
+		// Use email address as a sanity check
+		$found = BP_Signup::get();
+		$found_email = isset( $found['signups'][0]->user_email ) ? $found['signups'][0]->user_email : '';
+		$this->assertSame( $u_obj->user_email, $found_email );
 	}
 }

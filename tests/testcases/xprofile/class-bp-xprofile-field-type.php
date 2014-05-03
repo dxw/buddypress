@@ -14,7 +14,7 @@ class BP_Tests_XProfile_Field_Type extends BP_UnitTestCase {
 
 	public function test_unregistered_field_type_returns_textbox() {
 		$field = bp_xprofile_create_field_type( 'fakeyfield' );
-		$this->assertEquals( get_class( $field ), 'BP_XProfile_Field_Type_Textbox' );
+		$this->assertEquals( get_class( $field ), 'BP_XProfile_Field_Type_Placeholder' );
 	}
 
 
@@ -158,5 +158,15 @@ class BP_Tests_XProfile_Field_Type extends BP_UnitTestCase {
 		$this->assertFalse( $field->is_valid( array( '' ) ) );
 		$this->assertFalse( $field->is_valid( '' ) );
 		$this->assertTrue( $field->is_valid( array() ) );
+	}
+
+	/**
+	 * @group BP_XProfile_Field_Group_Type_Placeholder
+	 */
+	public function test_placeholder_validate_any_value() {
+		$field = bp_xprofile_create_field_type( 'foo' );
+		$this->assertTrue( $field->is_valid( '' ) );
+		$this->assertTrue( $field->is_valid( 'bar' ) );
+		$this->assertTrue( $field->is_valid( array( 'bar' ) ) );
 	}
 }
