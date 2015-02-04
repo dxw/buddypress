@@ -94,7 +94,7 @@ class BP_Tests_Blogs_Cache extends BP_UnitTestCase {
 			return;
 		}
 
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 
 		// Switch user so we have access to non-public blogs
 		$old_user = get_current_user_id();
@@ -188,7 +188,7 @@ class BP_Tests_Blogs_Cache extends BP_UnitTestCase {
 			return;
 		}
 
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 
 		// Switch user so we have access to non-public blogs
 		$old_user = get_current_user_id();
@@ -230,5 +230,62 @@ class BP_Tests_Blogs_Cache extends BP_UnitTestCase {
 		$this->assertFalse( wp_cache_get( $b2, 'blog_meta' ) );
 
 		$this->set_current_user( $old_user );
+	}
+
+	/**
+	 * @group bp_blogs_total_blogs
+	 * @group counts
+	 */
+	public function test_bp_blogs_total_count_should_respect_cached_value_of_0() {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		global $wpdb;
+
+		// prime cache
+		// no blogs are created by default, so count is zero
+		bp_blogs_total_blogs();
+		$first_query_count = $wpdb->num_queries;
+
+		// run function again
+		bp_blogs_total_blogs();
+
+		// check if function references cache or hits the DB by comparing query count
+		$this->assertEquals( $first_query_count, $wpdb->num_queries );
+	}
+
+	/**
+	 * @group bp_blogs_total_blogs
+	 */
+	public function test_bp_blogs_total_blogs_count_after_delete_blog() {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		$u = $this->factory->user->create();
+
+		// need to make sure we set the 'public' flag due to how BP_Blogs_Blogs:get_all() works
+		$b1 = $this->factory->blog->create( array(
+			'meta' => array(
+				'public' => 1
+			)
+		) );
+		$b2 = $this->factory->blog->create( array(
+			'meta' => array(
+				'public' => 1
+			)
+		) );
+
+		bp_blogs_record_blog( $b1, $u );
+		bp_blogs_record_blog( $b2, $u );
+
+		// prime total blog count
+		bp_blogs_total_blogs();
+
+		// delete a blog
+		wpmu_delete_blog( $b2 );
+
+		$this->assertEquals( 1, bp_blogs_total_blogs() );
 	}
 }

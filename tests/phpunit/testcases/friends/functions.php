@@ -6,15 +6,26 @@
  */
 class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 
+	protected $filter_fired;
+
+	public function setUp() {
+		parent::setUp();
+		$this->filter_fired = '';
+	}
+
+	public function tearDown() {
+		parent::tearDown();
+	}
+
 	/**
 	 * @group friends_get_friendship_request_user_ids
 	 * @group friends_add_friend
 	 * @group friends_accept_friendship
 	 */
 	public function test_requests_on_accept() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
-		$u3 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
+		$u3 = $this->factory->user->create();
 
 		// request friendship
 		friends_add_friend( $u2, $u1 );
@@ -41,9 +52,9 @@ class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 	 * @group friends_add_friend
 	 */
 	public function test_requests_on_request() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
-		$u3 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
+		$u3 = $this->factory->user->create();
 
 		// request friendship
 		friends_add_friend( $u2, $u1 );
@@ -66,8 +77,8 @@ class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 	 * @group friends_withdraw_friendship
 	 */
 	public function test_requests_on_withdraw() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 
 		// request friendship
 		friends_add_friend( $u2, $u1 );
@@ -94,8 +105,8 @@ class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 	 * @group friends_reject_friendship
 	 */
 	public function test_requests_on_reject() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 
 		// request friendship
 		friends_add_friend( $u2, $u1 );
@@ -120,7 +131,7 @@ class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 	 * @group friends_add_friend
 	 */
 	public function test_friends_add_friend_fail_on_self() {
-		$u1 = $this->create_user();
+		$u1 = $this->factory->user->create();
 		$this->assertFalse( friends_add_friend( $u1, $u1 ) );
 	}
 
@@ -128,8 +139,8 @@ class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 	 * @group friends_add_friend
 	 */
 	public function test_friends_add_friend_already_friends() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 
 		friends_add_friend( $u1, $u2, true );
 
@@ -141,19 +152,19 @@ class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 	 */
 	public function test_friends_check_friendship_status_in_members_loop() {
 		$now = time();
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now ),
 		) );
-		$u2 = $this->create_user( array(
+		$u2 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 100 ),
 		) );
-		$u3 = $this->create_user( array(
+		$u3 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 200 ),
 		) );
-		$u4 = $this->create_user( array(
+		$u4 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 300 ),
 		) );
-		$u5 = $this->create_user( array(
+		$u5 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 400 ),
 		) );
 
@@ -189,19 +200,19 @@ class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 	 */
 	public function test_friends_check_friendship_status_not_in_members_loop() {
 		$now = time();
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now ),
 		) );
-		$u2 = $this->create_user( array(
+		$u2 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 100 ),
 		) );
-		$u3 = $this->create_user( array(
+		$u3 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 200 ),
 		) );
-		$u4 = $this->create_user( array(
+		$u4 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 300 ),
 		) );
-		$u5 = $this->create_user( array(
+		$u5 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 400 ),
 		) );
 
@@ -226,5 +237,38 @@ class BP_Tests_Friends_Functions extends BP_UnitTestCase {
 		);
 
 		$this->assertSame( $expected, $found );
+	}
+
+	/**
+	 * @group friends_add_friend
+	 */
+	public function test_friends_add_friend_friends_friendship_requested() {
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
+
+		add_filter( 'friends_friendship_requested', array( $this, 'friends_friendship_filter_callback' ) );
+		$n = friends_add_friend( $u1, $u2, false );
+		remove_filter( 'friends_friendship_requested', array( $this, 'friends_friendship_filter_callback' ) );
+
+		$this->assertSame( 'friends_friendship_requested', $this->filter_fired );
+	}
+
+	/**
+	 * @group friends_add_friend
+	 */
+	public function test_friends_add_friend_friends_friendship_accepted() {
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
+
+		add_filter( 'friends_friendship_accepted', array( $this, 'friends_friendship_filter_callback' ) );
+		$n = friends_add_friend( $u1, $u2, true );
+		remove_filter( 'friends_friendship_accepted', array( $this, 'friends_friendship_filter_callback' ) );
+
+		$this->assertSame( 'friends_friendship_accepted', $this->filter_fired );
+	}
+
+	public function friends_friendship_filter_callback( $value ) {
+		$this->filter_fired = current_filter();
+		return $value;
 	}
 }

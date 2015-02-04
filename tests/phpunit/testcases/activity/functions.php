@@ -452,7 +452,7 @@ Bar!';
 	public function test_bp_activity_get_user_mentionname_compatibilitymode_off() {
 		add_filter( 'bp_is_username_compatibility_mode', '__return_false' );
 
-		$u = $this->create_user( array(
+		$u = $this->factory->user->create( array(
 			'user_login' => 'foo bar baz',
 			'user_nicename' => 'foo-bar-baz',
 		) );
@@ -468,12 +468,12 @@ Bar!';
 	public function test_bp_activity_get_user_mentionname_compatibilitymode_on() {
 		add_filter( 'bp_is_username_compatibility_mode', '__return_true' );
 
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'user_login' => 'foo bar baz',
 			'user_nicename' => 'foo-bar-baz',
 		) );
 
-		$u2 = $this->create_user( array(
+		$u2 = $this->factory->user->create( array(
 			'user_login' => 'foo.bar.baz',
 			'user_nicename' => 'foo-bar-baz',
 		) );
@@ -490,7 +490,7 @@ Bar!';
 	public function test_bp_activity_get_userid_from_mentionname_compatibilitymode_off() {
 		add_filter( 'bp_is_username_compatibility_mode', '__return_false' );
 
-		$u = $this->create_user( array(
+		$u = $this->factory->user->create( array(
 			'user_login' => 'foo bar baz',
 			'user_nicename' => 'foo-bar-baz',
 		) );
@@ -507,24 +507,24 @@ Bar!';
 		add_filter( 'bp_is_username_compatibility_mode', '__return_true' );
 
 		// all spaces are hyphens
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'user_login' => 'foo bar baz',
 			'user_nicename' => 'foobarbaz',
 		) );
 
 		// no spaces are hyphens
-		$u2 = $this->create_user( array(
+		$u2 = $this->factory->user->create( array(
 			'user_login' => 'foo-bar-baz-1',
 			'user_nicename' => 'foobarbaz-1',
 		) );
 
 		// some spaces are hyphens
-		$u3 = $this->create_user( array(
+		$u3 = $this->factory->user->create( array(
 			'user_login' => 'foo bar-baz 2',
 			'user_nicename' => 'foobarbaz-2',
 		) );
 
-		$u4 = $this->create_user( array(
+		$u4 = $this->factory->user->create( array(
 			'user_login' => 'foo.bar.baz',
 			'user_nicename' => 'foo-bar-baz',
 		) );
@@ -542,7 +542,7 @@ Bar!';
 	 * @group bp_activity_format_activity_action_activity_update
 	 */
 	public function test_bp_activity_format_activity_action_activity_update() {
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 		$a = $this->factory->activity->create( array(
 			'component' => buddypress()->activity->id,
 			'type' => 'activity_update',
@@ -561,7 +561,7 @@ Bar!';
 	 * @group bp_activity_format_activity_action_activity_comment
 	 */
 	public function test_bp_activity_format_activity_action_activity_comment() {
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 		$a = $this->factory->activity->create( array(
 			'component' => buddypress()->activity->id,
 			'type' => 'activity_comment',
@@ -573,6 +573,340 @@ Bar!';
 		$expected = sprintf( '%s posted a new activity comment', bp_core_get_userlink( $u ) );
 
 		$this->assertSame( $expected, $a_obj->action );
+	}
+
+	/**
+	 * @group activity_action
+	 * @group bp_activity_format_activity_action_custom_post_type_post
+	 * @group activity_tracking
+	 */
+	public function test_bp_activity_format_activity_action_custom_post_type_post_nonms() {
+		if ( is_multisite() ) {
+			return;
+		}
+
+		$bp = buddypress();
+
+		register_post_type( 'foo', array(
+			'label'   => 'foo',
+			'public'   => true,
+			'supports' => array( 'buddypress-activity' ),
+		) );
+
+		// Build the actions to fetch the tracking args
+		bp_activity_get_actions();
+
+		$u = $this->factory->user->create();
+		$p = $this->factory->post->create( array(
+			'post_author' => $u,
+			'post_type'   => 'foo',
+		) );
+
+		$a = $this->factory->activity->create( array(
+			'component'         => 'activity',
+			'type'              => 'new_foo',
+			'user_id'           => $u,
+			'item_id'           => 1,
+			'secondary_item_id' => $p,
+		) );
+
+		$a_obj = new BP_Activity_Activity( $a );
+
+		$user_link = bp_core_get_userlink( $u );
+		$blog_url = get_home_url();
+		$post_url = add_query_arg( 'p', $p, trailingslashit( $blog_url ) );
+		$post_link = '<a href="' . $post_url . '">item</a>';
+
+		$expected = sprintf( '%s wrote a new %s', $user_link, $post_link );
+
+		$this->assertSame( $expected, $a_obj->action );
+
+		_unregister_post_type( 'foo' );
+
+		// Reset globals
+		unset( $bp->activity->actions->activity->new_foo );
+		$bp->activity->track = array();
+	}
+
+	/**
+	 * @group activity_action
+	 * @group bp_activity_format_activity_action_custom_post_type_post_ms
+	 * @group activity_tracking
+	 */
+	public function test_bp_activity_format_activity_action_custom_post_type_post_ms() {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		$bp = buddypress();
+
+		$b = $this->factory->blog->create();
+		$u = $this->factory->user->create();
+
+		switch_to_blog( $b );
+
+		register_post_type( 'foo', array(
+			'label'   => 'foo',
+			'public'   => true,
+			'supports' => array( 'buddypress-activity' ),
+		) );
+
+		// Build the actions to fetch the tracking args
+		bp_activity_get_actions();
+
+		$p = $this->factory->post->create( array(
+			'post_author' => $u,
+			'post_type'   => 'foo',
+		) );
+
+		$activity_args = array(
+			'component'         => 'activity',
+			'type'              => 'new_foo',
+			'user_id'           => $u,
+			'item_id'           => $b,
+			'secondary_item_id' => $p,
+		);
+
+		_unregister_post_type( 'foo' );
+		bp_activity_get_actions();
+
+		restore_current_blog();
+
+		$a = $this->factory->activity->create( $activity_args );
+
+		$a_obj = new BP_Activity_Activity( $a );
+
+		$user_link = bp_core_get_userlink( $u );
+		$blog_url = get_blog_option( $a_obj->item_id, 'home' );
+		$post_url = add_query_arg( 'p', $p, trailingslashit( $blog_url ) );
+
+		$post_link = '<a href="' . $post_url . '">item</a>';
+
+		$expected = sprintf( '%s wrote a new %s, on the site %s', $user_link, $post_link, '<a href="' . $blog_url . '">' . get_blog_option( $a_obj->item_id, 'blogname' ) . '</a>' );
+
+		$this->assertSame( $expected, $a_obj->action );
+
+		// Reset globals
+		unset( $bp->activity->actions->activity->new_foo );
+		$bp->activity->track = array();
+	}
+
+	/**
+	 * @group activity_action
+	 * @group bp_activity_get_actions
+	 */
+	public function test_bp_activity_get_actions_should_sort_by_position() {
+		$old_actions = bp_activity_get_actions();
+		buddypress()->activity->actions = new stdClass;
+
+		register_post_type( 'foo5', array(
+			'public'      => true,
+			'supports'    => array( 'buddypress-activity' ),
+			'bp_activity' => array(
+				'component_id' => 'foo',
+				'action_id' => 'foo_bar_5',
+				'position' => 5,
+			),
+		) );
+
+		register_post_type( 'foo50', array(
+			'public'      => true,
+			'supports'    => array( 'buddypress-activity' ),
+			'bp_activity' => array(
+				'component_id' => 'foo',
+				'action_id' => 'foo_bar_50',
+				'position' => 50,
+			),
+		) );
+
+		register_post_type( 'foo25', array(
+			'public'      => true,
+			'supports'    => array( 'buddypress-activity' ),
+			'bp_activity' => array(
+				'component_id' => 'foo',
+				'action_id' => 'foo_bar_25',
+				'position' => 25,
+			),
+		) );
+
+		$actions = bp_activity_get_actions();
+
+		$expected = array(
+			'foo_bar_5',
+			'foo_bar_25',
+			'foo_bar_50',
+		);
+		$foo_actions = (array) $actions->foo;
+		$this->assertEquals( $expected, array_values( wp_list_pluck( $foo_actions, 'key' ) ) );
+
+		buddypress()->activity->actions = $old_actions;
+	}
+
+	/**
+	 * @group activity_action
+	 * @group bp_activity_format_activity_action_custom_post_type_post
+	 */
+	public function test_bp_activity_format_activity_action_custom_string_post_type_post_nonms() {
+		if ( is_multisite() ) {
+			return;
+		}
+
+		$bp = buddypress();
+
+		$labels = array(
+			'name'                 => 'bars',
+			'singular_name'        => 'bar',
+			'bp_activity_new_post' => '%1$s shared a new <a href="%2$s">bar</a>',
+		);
+
+		register_post_type( 'foo', array(
+			'labels'      => $labels,
+			'public'      => true,
+			'supports'    => array( 'buddypress-activity' ),
+			'bp_activity' => array(
+				'action_id' => 'foo_bar',
+			),
+		) );
+
+		// Build the actions to fetch the tracking args
+		bp_activity_get_actions();
+
+		$u = $this->factory->user->create();
+		$p = $this->factory->post->create( array(
+			'post_author' => $u,
+			'post_type'   => 'foo',
+		) );
+
+		$a = $this->factory->activity->create( array(
+			'component'         => 'activity',
+			'type'              => 'foo_bar',
+			'user_id'           => $u,
+			'item_id'           => 1,
+			'secondary_item_id' => $p,
+		) );
+
+		$a_obj = new BP_Activity_Activity( $a );
+
+		$user_link = bp_core_get_userlink( $u );
+		$blog_url = get_home_url();
+		$post_url = add_query_arg( 'p', $p, trailingslashit( $blog_url ) );
+
+		$expected = sprintf( '%1$s shared a new <a href="%2$s">bar</a>', $user_link, $post_url );
+
+		$this->assertSame( $expected, $a_obj->action );
+
+		_unregister_post_type( 'foo' );
+
+		// Reset globals
+		unset( $bp->activity->actions->activity->foo_bar );
+		$bp->activity->track = array();
+	}
+
+	/**
+	 * @group activity_action
+	 * @group bp_activity_format_activity_action_custom_post_type_post_ms
+	 * @group activity_tracking
+	 */
+	public function test_bp_activity_format_activity_action_custom_string_post_type_post_ms() {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		$bp = buddypress();
+		$reset = $bp->activity->actions;
+
+		$b = $this->factory->blog->create();
+		$u = $this->factory->user->create();
+
+		switch_to_blog( $b );
+
+		$labels = array(
+			'name'                    => 'bars',
+			'singular_name'           => 'bar',
+			'bp_activity_new_post_ms' => '%1$s shared a new <a href="%2$s">bar</a>, on the site %3$s',
+		);
+
+		register_post_type( 'foo', array(
+			'labels'   => $labels,
+			'public'   => true,
+			'supports' => array( 'buddypress-activity' ),
+		) );
+
+		// Build the actions to fetch the tracking args
+		bp_activity_get_actions();
+
+		$p = $this->factory->post->create( array(
+			'post_author' => $u,
+			'post_type'   => 'foo',
+		) );
+
+		$activity_args = array(
+			'component'         => 'activity',
+			'type'              => 'new_foo',
+			'user_id'           => $u,
+			'item_id'           => $b,
+			'secondary_item_id' => $p,
+		);
+
+		_unregister_post_type( 'foo' );
+
+		restore_current_blog();
+
+		$a = $this->factory->activity->create( $activity_args );
+
+		$a_obj = new BP_Activity_Activity( $a );
+
+		$user_link = bp_core_get_userlink( $u );
+		$blog_url = get_blog_option( $a_obj->item_id, 'home' );
+		$post_url = add_query_arg( 'p', $p, trailingslashit( $blog_url ) );
+
+		$expected = sprintf( '%1$s shared a new <a href="%2$s">bar</a>, on the site %3$s', $user_link, $post_url, '<a href="' . $blog_url . '">' . get_blog_option( $a_obj->item_id, 'blogname' ) . '</a>' );
+
+		$this->assertSame( $expected, $a_obj->action );
+
+		// Reset globals
+		unset( $bp->activity->actions->activity->new_foo );
+		$bp->activity->track = array();
+	}
+
+	/**
+	 * @group bp_activity_set_post_type_tracking_args
+	 * @group activity_tracking
+	 */
+	public function test_bp_activity_set_post_type_tracking_args() {
+		$bp = buddypress();
+
+		add_post_type_support( 'page', 'buddypress-activity' );
+
+		bp_activity_set_post_type_tracking_args( 'page', array(
+			'component_id' => $bp->blogs->id,
+			'dummy'        => 'dummy value',
+		) );
+
+		// Build the actions to fetch the tracking args
+		bp_activity_get_actions();
+
+		$u = $this->factory->user->create();
+
+		$post_id = $this->factory->post->create( array(
+			'post_author' => $u,
+			'post_status' => 'publish',
+			'post_type'   => 'page',
+		) );
+
+		$a = bp_activity_get( array(
+			'action'            => 'new_page',
+			'item_id'           => get_current_blog_id(),
+			'secondary_item_id' => $post_id,
+		) );
+
+		$this->assertSame( $bp->blogs->id, $a['activities'][0]->component );
+
+		remove_post_type_support( 'page', 'buddypress-activity' );
+
+		// Reset globals
+		unset( $bp->activity->actions->blogs->new_page );
+		$bp->activity->track = array();
 	}
 
 	/**
@@ -723,11 +1057,30 @@ Bar!';
 	}
 
 	/**
+	 * @group bp_activity_new_comment
+	 * @group BP5907
+	 */
+	public function test_bp_activity_comment_on_deleted_activity() {
+		$a = $this->factory->activity->create();
+
+		bp_activity_delete_by_activity_id( $a );
+
+		$c = bp_activity_new_comment( array(
+			'activity_id' => $a,
+			'parent_id' => $a,
+			'content' => 'foo',
+			'user_id' => 1,
+		) );
+
+		$this->assertEmpty( $c );
+	}
+
+	/**
 	 * @group favorites
 	 * @group bp_activity_add_user_favorite
 	 */
 	public function test_add_user_favorite_already_favorited() {
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 		$a = $this->factory->activity->create();
 
 		$this->assertTrue( bp_activity_add_user_favorite( $a, $u ) );
@@ -742,7 +1095,7 @@ Bar!';
 	 * @group bp_activity_add_user_favorite
 	 */
 	public function test_add_user_favorite_not_yet_favorited() {
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 		$a = $this->factory->activity->create();
 		$this->assertTrue( bp_activity_add_user_favorite( $a, $u ) );
 	}
@@ -752,8 +1105,8 @@ Bar!';
 	 * @group bp_activity_remove_user_favorite
 	 */
 	public function test_remove_user_favorite_bad_activity_id() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$a = $this->factory->activity->create();
 
 		// Only favorite for user 1
@@ -785,7 +1138,7 @@ Bar!';
 	 * @group bp_activity_post_update
 	 */
 	public function test_bp_activity_post_update_success() {
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 
 		$a = bp_activity_post_update( array(
 			'user_id' => $u,

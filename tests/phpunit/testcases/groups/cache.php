@@ -159,9 +159,12 @@ class BP_Tests_Group_Cache extends BP_UnitTestCase {
 	 * @group groups_get_group_admins
 	 */
 	public function test_groups_get_group_admins_cache() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
+
+		// User 2 joins the group
+		groups_join_group( $g, $u2 );
 
 		// prime cache
 		groups_get_group_admins( $g );
@@ -181,8 +184,8 @@ class BP_Tests_Group_Cache extends BP_UnitTestCase {
 	 * @group groups_get_group_admins
 	 */
 	public function test_groups_get_group_admins_cache_on_member_save() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 
 		// prime cache
@@ -196,5 +199,24 @@ class BP_Tests_Group_Cache extends BP_UnitTestCase {
 
 		// assert new cached value
 		$this->assertEquals( 2, count( groups_get_group_admins( $g ) ) );
+	}
+
+	/**
+	 * @group groups_get_total_group_count
+	 * @group counts
+	 */
+	public function test_groups_get_total_group_count_should_respect_cached_value_of_0() {
+		global $wpdb;
+
+		// prime cache
+		// no groups are created by default, so count is zero
+		groups_get_total_group_count();
+		$first_query_count = $wpdb->num_queries;
+
+		// run function again
+		groups_get_total_group_count();
+
+		// check if function references cache or hits the DB by comparing query count
+		$this->assertEquals( $first_query_count, $wpdb->num_queries );
 	}
 }

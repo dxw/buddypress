@@ -14,14 +14,25 @@ class BP_Tests_Activity_Notifications extends BP_UnitTestCase {
 	public function setUp() {
 		parent::setUp();
 		$this->current_user = get_current_user_id();
-		$this->u1 = $this->create_user();
-		$this->u2 = $this->create_user();
+		$this->u1 = $this->factory->user->create();
+		$this->u2 = $this->factory->user->create();
 		$this->set_current_user( $this->u1 );
+
+		/**
+		 * Tests suite in WP < 4.0 does not include the WP_UnitTestCase->_restore_hooks() function
+		 * When updating an activity, the following filter is fired to prevent sending more than one
+		 * notification. Once we've reached this filter all at_mentions tests fails so we need to
+		 * temporarly remove it and restore it in $this->tearDown()
+		 */
+		remove_filter( 'bp_activity_at_name_do_notifications', '__return_false' );
 	}
 
 	public function tearDown() {
 		$this->set_current_user( $this->current_user );
 		parent::tearDown();
+
+		// Restore the filter
+		add_filter( 'bp_activity_at_name_do_notifications', '__return_false' );
 	}
 
 	/**
@@ -39,7 +50,7 @@ class BP_Tests_Activity_Notifications extends BP_UnitTestCase {
 		$this->assertEquals( array( $this->a1 ), wp_list_pluck( $notifications, 'item_id' ) );
 
 		// Go to the activity permalink page
-		$this->go_to( bp_get_root_domain() . '/' . bp_get_activity_root_slug() . '/p/' . $this->a1 . '/' );
+		$this->go_to( bp_activity_get_permalink( $this->a1 ) );
 		$activity = bp_activity_get_specific( array( 'activity_ids' => $this->a1, 'show_hidden' => true, 'spam' => 'ham_only', ) );
 		do_action( 'bp_activity_screen_single_activity_permalink', $activity['activities'][0] );
 
@@ -69,7 +80,7 @@ class BP_Tests_Activity_Notifications extends BP_UnitTestCase {
 		$this->set_current_user( 0 );
 
 		// Go to the activity permalink page
-		$this->go_to( bp_get_root_domain() . '/' . bp_get_activity_root_slug() . '/p/' . $this->a1 . '/' );
+		$this->go_to( bp_activity_get_permalink( $this->a1 ) );
 		$activity = bp_activity_get_specific( array( 'activity_ids' => $this->a1, 'show_hidden' => true, 'spam' => 'ham_only', ) );
 		do_action( 'bp_activity_screen_single_activity_permalink', $activity['activities'][0] );
 
@@ -101,7 +112,7 @@ class BP_Tests_Activity_Notifications extends BP_UnitTestCase {
 		$this->set_current_user( $this->u2 );
 
 		// Go to the activity permalink page
-		$this->go_to( bp_get_root_domain() . '/' . bp_get_activity_root_slug() . '/p/' . $this->a1 . '/' );
+		$this->go_to( bp_activity_get_permalink( $this->a1 ) );
 		$activity = bp_activity_get_specific( array( 'activity_ids' => $this->a1, 'show_hidden' => true, 'spam' => 'ham_only', ) );
 		do_action( 'bp_activity_screen_single_activity_permalink', $activity['activities'][0] );
 

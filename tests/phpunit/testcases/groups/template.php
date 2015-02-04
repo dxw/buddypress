@@ -131,9 +131,11 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 * @group bp_group_has_members
 	 */
 	public function test_bp_group_has_members_vanilla() {
-		$g = $this->factory->group->create();
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
+		$g  = $this->factory->group->create( array(
+			'creator_id' => $u1,
+		) );
 
 		$this->add_user_to_group( $u1, $g );
 
@@ -157,8 +159,8 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 * @group bp_group_has_members
 	 */
 	public function test_bp_group_has_members_backpat_retval_format() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create( array( 'creator_id' => $u2 ) );
 
 		$date_modified = gmdate( 'Y-m-d H:i:s', time() - 100 );
@@ -201,7 +203,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 
 		$users = array();
 		for ( $i = 1; $i <= 10; $i++ ) {
-			$users[ $i ] = $this->create_user();
+			$users[ $i ] = $this->factory->user->create();
 		}
 
 		$expected = array();
@@ -239,7 +241,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 
 		$users = array();
 		for ( $i = 1; $i <= 10; $i++ ) {
-			$users[ $i ] = $this->create_user();
+			$users[ $i ] = $this->factory->user->create();
 		}
 
 		$expected = array();
@@ -262,8 +264,8 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 */
 	public function test_bp_group_has_members_with_exclude() {
 		$g = $this->factory->group->create();
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 
 		$this->add_user_to_group( $u1, $g );
 		$this->add_user_to_group( $u2, $g );
@@ -283,9 +285,9 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 */
 	public function test_bp_group_has_members_with_exclude_admins_mods_1() {
 		$g = $this->factory->group->create();
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
-		$u3 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
+		$u3 = $this->factory->user->create();
 
 		$this->add_user_to_group( $u1, $g );
 		$this->add_user_to_group( $u2, $g );
@@ -310,9 +312,9 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 * @group bp_group_has_members
 	 */
 	public function test_bp_group_has_members_with_exclude_admins_mods_0() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
-		$u3 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
+		$u3 = $this->factory->user->create();
 		$g = $this->factory->group->create( array(
 			'creator_id' => $u1,
 		) );
@@ -345,8 +347,8 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 */
 	public function test_bp_group_has_members_with_exclude_banned_1() {
 		$g = $this->factory->group->create();
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 
 		$this->add_user_to_group( $u1, $g );
 		$this->add_user_to_group( $u2, $g );
@@ -368,9 +370,9 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 * @group bp_group_has_members
 	 */
 	public function test_bp_group_has_members_with_exclude_banned_0() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
-		$u3 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
+		$u3 = $this->factory->user->create();
 
 		$g = $this->factory->group->create( array(
 			'creator_id' => $u1,
@@ -406,13 +408,13 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 */
 	public function test_bp_group_has_members_default_order() {
 		$now = time();
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $now - 60 ),
 		) );
-		$u2 = $this->create_user( array(
+		$u2 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $now - 600 ),
 		) );
-		$u3 = $this->create_user( array(
+		$u3 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $now - 6000 ),
 		) );
 
@@ -445,16 +447,16 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 */
 	public function test_bp_group_has_invites_template_structure() {
 		$now = time();
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $now - 60 ),
 		) );
-		$u2 = $this->create_user( array(
+		$u2 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $now - 600 ),
 		) );
-		$u3 = $this->create_user( array(
+		$u3 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $now - 6000 ),
 		) );
-		$u4 = $this->create_user( array(
+		$u4 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $now - 60000 ),
 		) );
 
@@ -525,7 +527,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 * @group BP_Groups_Invite_Template
 	 */
 	public function test_bp_group_has_invites_pagination() {
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', time() - 60 ),
 		) );
 
@@ -536,7 +538,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 		$users = array();
 		$now = time();
 		for ( $i = 1; $i < 15; $i++ ) {
-			$users[ $i ] = $this->create_user( array(
+			$users[ $i ] = $this->factory->user->create( array(
 				'last_activity' => gmdate( 'Y-m-d H:i:s', $now - $i ),
 			) );
 
@@ -569,7 +571,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 */
 	public function test_bp_group_has_membership_requests_results() {
 		$now = time();
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $now - 60 ),
 		) );
 
@@ -580,7 +582,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 		$users = array();
 		$memberships = array();
 		for ( $i = 1; $i < 15; $i++ ) {
-			$users[ $i ] = $this->create_user( array(
+			$users[ $i ] = $this->factory->user->create( array(
 				'last_activity' => gmdate( 'Y-m-d H:i:s', $now - ( 100 - $i ) ),
 			) );
 
@@ -633,7 +635,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 * @group BP_Group_Membership_Requests_Template
 	 */
 	public function test_bp_group_has_membership_requests_format() {
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', time() - 60 ),
 		) );
 
@@ -643,7 +645,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 
 		$time = time();
 
-		$user = $this->create_user( array(
+		$user = $this->factory->user->create( array(
 			'last_activity' => gmdate( 'Y-m-d H:i:s', $time ),
 		) );
 
@@ -702,10 +704,10 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 */
 	public function test_bp_group_is_user_banned_in_groups_loop() {
 		$now = time();
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 100 ),
 		) );
-		$u2 = $this->create_user( array(
+		$u2 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 100 ),
 		) );
 
@@ -755,10 +757,10 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 	 */
 	public function test_bp_group_is_user_banned_not_in_groups_loop() {
 		$now = time();
-		$u1 = $this->create_user( array(
+		$u1 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 100 ),
 		) );
-		$u2 = $this->create_user( array(
+		$u2 = $this->factory->user->create( array(
 			'last_activity' => date( 'Y-m-d H:i:s', $now - 100 ),
 		) );
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
@@ -795,5 +797,328 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 
 		// Clean up
 		$this->set_current_user( $old_user );
+	}
+
+	/**
+	 * @group bp_get_group_member_count
+	 */
+	public function test_bp_get_group_member_count_0_members() {
+		global $groups_template;
+		$gt = $groups_template;
+		$groups_template = new stdClass;
+		$groups_template->group = new stdClass;
+		$groups_template->group->total_member_count = 0;
+
+		$found = bp_get_group_member_count();
+
+		$groups_template = $gt;
+
+		$this->assertSame( '0 members', $found );
+	}
+
+	/**
+	 * @group bp_get_group_member_count
+	 */
+	public function test_bp_get_group_member_count_1_member() {
+		global $groups_template;
+		$gt = $groups_template;
+		$groups_template = new stdClass;
+		$groups_template->group = new stdClass;
+		$groups_template->group->total_member_count = 1;
+
+		$found = bp_get_group_member_count();
+
+		$groups_template = $gt;
+
+		$this->assertSame( '1 member', $found );
+	}
+
+	/**
+	 * @group bp_get_group_member_count
+	 */
+	public function test_bp_get_group_member_count_2_members() {
+		global $groups_template;
+		$gt = $groups_template;
+		$groups_template = new stdClass;
+		$groups_template->group = new stdClass;
+		$groups_template->group->total_member_count = 2;
+
+		$found = bp_get_group_member_count();
+
+		$groups_template = $gt;
+
+		$this->assertSame( '2 members', $found );
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Template
+	 */
+	public function test_bp_groups_template_should_give_precedence_to_grpage_URL_param() {
+		$request = $_REQUEST;
+		$_REQUEST['grpage'] = '5';
+
+		$at = new BP_Groups_Template( array(
+			'page' => 8,
+		) );
+
+		$this->assertEquals( 5, $at->pag_page );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Template
+	 */
+	public function test_bp_groups_template_should_reset_0_pag_page_URL_param_to_default_pag_page_value() {
+		$request = $_REQUEST;
+		$_REQUEST['grpage'] = '0';
+
+		$at = new BP_Groups_Template( array(
+			'page' => 8,
+		) );
+
+		$this->assertEquals( 8, $at->pag_page );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Template
+	 */
+	public function test_bp_groups_template_should_give_precedence_to_num_URL_param() {
+		$request = $_REQUEST;
+		$_REQUEST['num'] = '14';
+
+		$at = new BP_Groups_Template( array(
+			'per_page' => 13,
+		) );
+
+		$this->assertEquals( 14, $at->pag_num );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Template
+	 */
+	public function test_bp_groups_template_should_reset_0_pag_num_URL_param_to_default_pag_num_value() {
+		$request = $_REQUEST;
+		$_REQUEST['num'] = '0';
+
+		$at = new BP_Groups_Template( array(
+			'per_page' => 13,
+		) );
+
+		$this->assertEquals( 13, $at->pag_num );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Group_Members_Template
+	 */
+	public function test_bp_groups_group_members_template_should_give_precedence_to_mlpage_URL_param() {
+		$request = $_REQUEST;
+		$_REQUEST['mlpage'] = '5';
+
+		$at = new BP_Groups_Group_Members_Template( array(
+			'page' => 8,
+		) );
+
+		$this->assertEquals( 5, $at->pag_page );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Group_Members_Template
+	 */
+	public function test_bp_groups_group_members_template_should_reset_0_pag_page_URL_param_to_default_pag_page_value() {
+		$request = $_REQUEST;
+		$_REQUEST['mlpage'] = '0';
+
+		$at = new BP_Groups_Group_Members_Template( array(
+			'page' => 8,
+		) );
+
+		$this->assertEquals( 8, $at->pag_page );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Group_Members_Template
+	 */
+	public function test_bp_groups_group_members_template_should_give_precedence_to_num_URL_param() {
+		$request = $_REQUEST;
+		$_REQUEST['num'] = '14';
+
+		$at = new BP_Groups_Group_Members_Template( array(
+			'per_page' => 13,
+		) );
+
+		$this->assertEquals( 14, $at->pag_num );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Group_Members_Template
+	 */
+	public function test_bp_groups_group_members_template_should_reset_0_pag_num_URL_param_to_default_pag_num_value() {
+		$request = $_REQUEST;
+		$_REQUEST['num'] = '0';
+
+		$at = new BP_Groups_Group_Members_Template( array(
+			'per_page' => 13,
+		) );
+
+		$this->assertEquals( 13, $at->pag_num );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Membership_Requests_Template
+	 */
+	public function test_bp_groups_membership_requests_template_should_give_precedence_to_mrpage_URL_param() {
+		$request = $_REQUEST;
+		$_REQUEST['mrpage'] = '5';
+
+		$at = new BP_Groups_Membership_Requests_Template( array(
+			'page' => 8,
+		) );
+
+		$this->assertEquals( 5, $at->pag_page );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Membership_Requests_Template
+	 */
+	public function test_bp_groups_membership_requests_template_should_reset_0_pag_page_URL_param_to_default_pag_page_value() {
+		$request = $_REQUEST;
+		$_REQUEST['mrpage'] = '0';
+
+		$at = new BP_Groups_Membership_Requests_Template( array(
+			'page' => 8,
+		) );
+
+		$this->assertEquals( 8, $at->pag_page );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Membership_Requests_Template
+	 */
+	public function test_bp_groups_membership_requests_template_should_give_precedence_to_num_URL_param() {
+		$request = $_REQUEST;
+		$_REQUEST['num'] = '14';
+
+		$at = new BP_Groups_Membership_Requests_Template( array(
+			'per_page' => 13,
+		) );
+
+		$this->assertEquals( 14, $at->pag_num );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Membership_Requests_Template
+	 */
+	public function test_bp_groups_membership_requests_template_should_reset_0_pag_num_URL_param_to_default_pag_num_value() {
+		$request = $_REQUEST;
+		$_REQUEST['num'] = '0';
+
+		$at = new BP_Groups_Membership_Requests_Template( array(
+			'per_page' => 13,
+		) );
+
+		$this->assertEquals( 13, $at->pag_num );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Invite_Template
+	 */
+	public function test_bp_groups_invite_template_should_give_precedence_to_invitepage_URL_param() {
+		$request = $_REQUEST;
+		$_REQUEST['invitepage'] = '5';
+
+		$at = new BP_Groups_Invite_Template( array(
+			'page' => 8,
+		) );
+
+		$this->assertEquals( 5, $at->pag_page );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Invite_Template
+	 */
+	public function test_bp_groups_invite_template_should_reset_0_pag_page_URL_param_to_default_pag_page_value() {
+		$request = $_REQUEST;
+		$_REQUEST['invitepage'] = '0';
+
+		$at = new BP_Groups_Invite_Template( array(
+			'page' => 8,
+		) );
+
+		$this->assertEquals( 8, $at->pag_page );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Invite_Template
+	 */
+	public function test_bp_groups_invite_template_should_give_precedence_to_num_URL_param() {
+		$request = $_REQUEST;
+		$_REQUEST['num'] = '14';
+
+		$at = new BP_Groups_Invite_Template( array(
+			'per_page' => 13,
+		) );
+
+		$this->assertEquals( 14, $at->pag_num );
+
+		$_REQUEST = $request;
+	}
+
+	/**
+	 * @group pagination
+	 * @group BP_Groups_Invite_Template
+	 */
+	public function test_bp_groups_invite_template_should_reset_0_pag_num_URL_param_to_default_pag_num_value() {
+		$request = $_REQUEST;
+		$_REQUEST['num'] = '0';
+
+		$at = new BP_Groups_Invite_Template( array(
+			'per_page' => 13,
+		) );
+
+		$this->assertEquals( 13, $at->pag_num );
+
+		$_REQUEST = $request;
 	}
 }

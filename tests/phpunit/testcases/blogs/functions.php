@@ -280,6 +280,45 @@ class BP_Tests_Blogs_Functions extends BP_UnitTestCase {
 	}
 
 	/**
+	 * @group bp_blogs_restore_data
+	 */
+	public function test_bp_blogs_restore_data() {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		// Create a regular member
+		$u = $this->factory->user->create();
+
+		// Create blogs
+		$b1 = $this->factory->blog->create( array( 'user_id' => $u ) );
+		$b2 = $this->factory->blog->create( array( 'user_id' => $u ) );
+
+		$expected = array(
+			$b1 => $b1,
+			$b2 => $b2
+		);
+
+		// Mark the user as spam
+		bp_core_process_spammer_status( $u, 'spam' );
+
+		// get all blogs for user
+		$blogs = bp_blogs_get_blogs_for_user( $u, true );
+		$blog_ids = wp_list_pluck( $blogs['blogs'], 'blog_id' );
+
+		$this->assertNotEquals( $expected, array_map( 'intval', $blog_ids ), 'User marked as spam should not have any blog registered' );
+
+		// Ham the user
+		bp_core_process_spammer_status( $u, 'ham' );
+
+		// get all blogs for user
+		$blogs = bp_blogs_get_blogs_for_user( $u, true );
+		$blog_ids = wp_list_pluck( $blogs['blogs'], 'blog_id' );
+
+		$this->assertEquals( $expected, array_map( 'intval', $blog_ids ) );
+	}
+
+	/**
 	 * @group bp_blogs_catch_transition_post_status
 	 */
 	public function test_transition_post_status_publish_to_publish() {
@@ -298,6 +337,84 @@ class BP_Tests_Blogs_Functions extends BP_UnitTestCase {
 		wp_update_post( $post );
 
 		$this->assertTrue( $this->activity_exists_for_post( $post_id ), 'Published post should have activity (no change)' );
+	}
+
+	/**
+	 * @group bp_blogs_catch_transition_post_status
+	 */
+	public function test_transition_post_status_password_publish() {
+		$post_id = $this->factory->post->create( array(
+			'post_status'   => 'publish',
+			'post_type'     => 'post',
+			'post_password' => 'pass',
+		) );
+		$post = get_post( $post_id );
+
+		// 'new' => 'publish with password'
+		$this->assertFalse( $this->activity_exists_for_post( $post_id ), 'Published with password post should not have activity' );
+	}
+
+	/**
+	 * @group bp_blogs_catch_transition_post_status
+	 */
+	public function test_transition_post_status_publish_update_password() {
+		$post_id = $this->factory->post->create( array(
+			'post_status'   => 'publish',
+			'post_type'     => 'post',
+		) );
+		$post = get_post( $post_id );
+
+		// 'publish' => 'publish'
+		$this->assertTrue( $this->activity_exists_for_post( $post_id ), 'Published post should have activity' );
+
+		$post->post_content .= ' foo';
+		$post->post_password = 'pass';
+
+		wp_update_post( $post );
+
+		$this->assertFalse( $this->activity_exists_for_post( $post_id ), 'Updated with password post should not have activity' );
+	}
+
+	/**
+	 * @group bp_blogs_catch_transition_post_status
+	 */
+	public function test_transition_post_status_private_publish() {
+		$post_id = $this->factory->post->create( array(
+			'post_status'   => 'private',
+			'post_type'     => 'post',
+		) );
+		$post = get_post( $post_id );
+
+		// 'new' => 'private'
+		$this->assertFalse( $this->activity_exists_for_post( $post_id ), 'Private post should not have activity' );
+
+		$post->post_status = 'publish';
+
+		wp_update_post( $post );
+
+		// 'private' => 'publish'
+		$this->assertTrue( $this->activity_exists_for_post( $post_id ), 'Published post should have activity' );
+	}
+
+	/**
+	 * @group bp_blogs_catch_transition_post_status
+	 */
+	public function test_transition_post_status_publish_private() {
+		$post_id = $this->factory->post->create( array(
+			'post_status'   => 'publish',
+			'post_type'     => 'post',
+		) );
+		$post = get_post( $post_id );
+
+		// 'new' => 'publish'
+		$this->assertTrue( $this->activity_exists_for_post( $post_id ), 'Published post should have activity' );
+
+		$post->post_status = 'private';
+
+		wp_update_post( $post );
+
+		// 'publish' => 'private'
+		$this->assertFalse( $this->activity_exists_for_post( $post_id ), 'Private post should not have activity' );
 	}
 
 	/**
@@ -400,7 +517,7 @@ class BP_Tests_Blogs_Functions extends BP_UnitTestCase {
 	public function test_update_blog_post_and_new_blog_comment_and_activity_comment_meta() {
 		// save the current user and override logged-in user
 		$old_user = get_current_user_id();
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 		$this->set_current_user( $u );
 		$userdata = get_userdata( $u );
 
@@ -475,6 +592,60 @@ class BP_Tests_Blogs_Functions extends BP_UnitTestCase {
 
 		// reset
 		$this->set_current_user( $old_user );
+	}
+
+	/**
+	 * @group bp_blogs_catch_transition_post_status
+	 */
+	public function test_bp_blogs_is_blog_trackable_false_publish_post() {
+		add_filter( 'bp_blogs_is_blog_trackable', '__return_false' );
+
+		$post_id = $this->factory->post->create( array(
+			'post_status'   => 'publish',
+			'post_type'     => 'post',
+		) );
+		$post = get_post( $post_id );
+
+		// 'new' => 'publish'
+		$this->assertFalse( $this->activity_exists_for_post( $post_id ), 'Not trackable blog post should not have activity' );
+
+		$post->post_content .= ' foo';
+
+		wp_update_post( $post );
+
+		// 'publish' => 'publish'
+		$this->assertFalse( $this->activity_exists_for_post( $post_id ), 'Not trackable blog post should not have activity' );
+
+		remove_filter( 'bp_blogs_is_blog_trackable', '__return_false' );
+	}
+
+	/**
+	 * @group bp_blogs_catch_transition_post_status
+	 */
+	public function test_bp_is_blog_public_zero_publish_post() {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		add_filter( 'bp_is_blog_public', '__return_zero' );
+
+		$post_id = $this->factory->post->create( array(
+			'post_status'   => 'publish',
+			'post_type'     => 'post',
+		) );
+		$post = get_post( $post_id );
+
+		// 'new' => 'publish'
+		$this->assertFalse( $this->activity_exists_for_post( $post_id ), 'Not public blog post should not have activity' );
+
+		$post->post_content .= ' foo';
+
+		wp_update_post( $post );
+
+		// 'publish' => 'publish'
+		$this->assertFalse( $this->activity_exists_for_post( $post_id ), 'Not public blog post should not have activity' );
+
+		remove_filter( 'bp_is_blog_public', '__return_zero' );
 	}
 
 	protected function activity_exists_for_post( $post_id ) {

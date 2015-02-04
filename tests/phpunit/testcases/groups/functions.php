@@ -5,13 +5,32 @@
  * @group functions
  */
 class BP_Tests_Groups_Functions extends BP_UnitTestCase {
+	protected $old_current_user_id = 0;
+
+	public function setUp() {
+		parent::setUp();
+		$this->old_current_user = get_current_user_id();
+	}
+
+	public function tearDown() {
+		parent::tearDown();
+		$this->set_current_user( $this->old_current_user );
+	}
+
+	public function test_creating_new_group_as_authenticated_user() {
+		$u = $this->factory->user->create();
+		wp_set_current_user( $u );
+
+		$this->factory->group->create();
+	}
+
 	/**
 	 * @group total_group_count
 	 * @group groups_join_group
 	 */
 	public function test_total_group_count_groups_join_group() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 
 		groups_join_group( $g, $u2 );
@@ -23,8 +42,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_leave_group
 	 */
 	public function test_total_group_count_groups_leave_group() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		$g2 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_join_group( $g1, $u2 );
@@ -39,8 +58,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_ban_member
 	 */
 	public function test_total_group_count_groups_ban_member() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		$g2 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_join_group( $g1, $u2 );
@@ -60,8 +79,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_unban_member
 	 */
 	public function test_total_group_count_groups_unban_member() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		$g2 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_join_group( $g1, $u2 );
@@ -83,8 +102,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_accept_invite
 	 */
 	public function test_total_group_count_groups_accept_invite() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create();
 		groups_invite_user( array(
 			'user_id' => $u1,
@@ -102,7 +121,7 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_accept_membership_request
 	 */
 	public function test_total_group_count_groups_accept_membership_request() {
-		$u = $this->create_user();
+		$u = $this->factory->user->create();
 		$g = $this->factory->group->create();
 		groups_send_membership_request( $u, $g );
 
@@ -116,8 +135,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_remove_member
 	 */
 	public function test_total_group_count_groups_remove_member() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		$g2 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_join_group( $g1, $u2 );
@@ -137,8 +156,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_join_group
 	 */
 	public function test_total_member_count_groups_join_group() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 
 		groups_join_group( $g, $u2 );
@@ -150,7 +169,7 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_leave_group
 	 */
 	public function test_total_member_count_groups_leave_group() {
-		$u1 = $this->create_user();
+		$u1 = $this->factory->user->create();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_join_group( $g1, $u1 );
 
@@ -163,8 +182,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_ban_member
 	 */
 	public function test_total_member_count_groups_ban_member() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_join_group( $g1, $u2 );
 
@@ -182,8 +201,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_unban_member
 	 */
 	public function test_total_member_count_groups_unban_member() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_join_group( $g1, $u2 );
 
@@ -203,8 +222,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_accept_invite
 	 */
 	public function test_total_member_count_groups_accept_invite() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_invite_user( array(
 			'user_id' => $u1,
@@ -222,8 +241,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_accept_membership_request
 	 */
 	public function test_total_member_count_groups_accept_membership_request() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 
 		groups_send_membership_request( $u2, $g );
@@ -237,8 +256,8 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_remove_member
 	 */
 	public function test_total_member_count_groups_remove_member() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g1 = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 		groups_join_group( $g1, $u2 );
 
@@ -256,7 +275,7 @@ class BP_Tests_Groups_Functions extends BP_UnitTestCase {
 	 * @group groups_create_group
 	 */
 	public function test_total_member_count_groups_create_group() {
-		$u1 = $this->create_user();
+		$u1 = $this->factory->user->create();
 		$g = groups_create_group( array(
 			'creator_id' => $u1,
 			'name' => 'Boone Is Handsome',
@@ -582,8 +601,8 @@ Bar!';
 	 */
 	public function test_groups_get_group_cache_different_users() {
 		$g = $this->factory->group->create();
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$this->add_user_to_group( $u1, $g );
 
 		$old_user = get_current_user_id();
@@ -604,8 +623,8 @@ Bar!';
 	 * @group counts
 	 */
 	public function test_get_invite_count_for_user() {
-		$u1 = $this->create_user();
-		$u2 = $this->create_user();
+		$u1 = $this->factory->user->create();
+		$u2 = $this->factory->user->create();
 		$g = $this->factory->group->create( array( 'creator_id' => $u1 ) );
 
 		// create invitation

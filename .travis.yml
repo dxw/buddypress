@@ -1,3 +1,9 @@
+# Travis CI Configuration File
+
+# Use new Travis container-based infrastructure
+# http://docs.travis-ci.com/user/workers/container-based-infrastructure/
+sudo: false
+
 language: php
 
 php:
@@ -5,22 +11,19 @@ php:
     - 5.3
     - 5.4
     - 5.5
+    - 5.6
 
 # WordPress comes from the Git mirror, where 'master' mirrors svn 'trunk' and
 # x.y mirrors the latest from the x.y branch
 env:
     - WP_VERSION=master
+    - WP_VERSION=4.1
     - WP_VERSION=4.0
     - WP_VERSION=3.9
     - WP_VERSION=3.8
     - WP_VERSION=3.7
 
 matrix:
-  include:
-    - php: 5.6
-      env: WP_VERSION=master
-  allow_failures:
-    - php: 5.6
   fast_finish: true
 
 # before_install: Failures in this section will result in build status 'errored'
@@ -40,8 +43,8 @@ before_install:
     - sed -i "s/youremptytestdbnamehere/wordpress_test/" wp-tests-config.php
     - sed -i "s/yourusernamehere/root/" wp-tests-config.php
     - sed -i "s/yourpasswordhere//" wp-tests-config.php
-    # disable WP_DEBUG for PHP 5.5 due to ext/mysqli E_DEPRECATED errors
-    - if [[ "$TRAVIS_PHP_VERSION" == 5.5* ]] && [[ "$WP_VERSION" == "3.7" ]] ; then sed -i "s:define( 'WP_DEBUG://define( 'WP_DEBUG:" wp-tests-config.php; fi;
+    # disable WP_DEBUG for PHP >= 5.5 due to ext/mysqli E_DEPRECATED errors
+    - if [[ "$TRAVIS_PHP_VERSION" > 5.4* ]] && [[ "$WP_VERSION" == "3.7" ]] ; then sed -i "s:define( 'WP_DEBUG://define( 'WP_DEBUG:" wp-tests-config.php; fi;
     # set up database
     - mysql -e 'CREATE DATABASE wordpress_test;' -uroot
     # prepare for running the tests
@@ -60,6 +63,8 @@ notifications:
 
     irc:
         channels:
-            - "irc.freenode.net#buddypress-dev"
+            - secure: "Z+gAlyOafrw0Xg294np+7IpqOKTsswGjAWyOZsbzT7Xo8uY1nmz8tTuU50Gpo8jo5HQqG9G0QgI3zB3Cxy3M5dF+J5oLl1lBz1zL0mtHiq1HoXi2cbVnGCCpxtMvYII6UmPUGAg8zvNUQol+cw1jb3PzLwEDfGcDH64o/Z3j8Gg="
         template:
             - "Build %{build_number} (%{branch} - %{commit}): %{message} %{build_url}"
+    slack:
+        secure: JQT+HWoVhLzoG00HmJscYZO+Gy7ywnIlrUbCaI7DxFdFOIkKxsTLLq9cKE4y3VqgZAARTOKjP1eQ7a5OEg1vT11Ow+rB7iUAMNmITxXO4feTOx1i2673xRNBro/SZMhlLd7DY2erbMDZaG9hBQB4xLXRYOvP29pLxf5zTSyZMyE=
