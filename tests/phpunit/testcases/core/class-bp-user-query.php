@@ -497,6 +497,20 @@ class BP_Tests_BP_User_Query_TestCases extends BP_UnitTestCase {
 		$this->assertEqualSets( array( $users[0] ), $found );
 	}
 
+	/**
+	 * @group member_types
+	 * @ticket BP6334
+	 */
+	public function test_should_return_no_results_when_no_users_match_the_specified_member_type() {
+		bp_register_member_type( 'foo' );
+		$users = $this->factory->user->create_many( 3 );
+
+		$q = new BP_User_Query( array(
+			'member_type' => 'foo, baz',
+		) );
+
+		$this->assertEmpty( $q->results );
+	}
 
 	/**
 	 * @group cache
@@ -514,9 +528,9 @@ class BP_Tests_BP_User_Query_TestCases extends BP_UnitTestCase {
 			'include' => $users,
 		) );
 
-		$this->assertSame( array( 'foo' ), wp_cache_get( $users[0], 'bp_member_type' ) );
-		$this->assertSame( array( 'bar' ), wp_cache_get( $users[1], 'bp_member_type' ) );
-		$this->assertSame( array( 'foo' ), wp_cache_get( $users[2], 'bp_member_type' ) );
-		$this->assertSame( '', wp_cache_get( $users[3], 'bp_member_type' ) );
+		$this->assertSame( array( 'foo' ), wp_cache_get( $users[0], 'bp_member_member_type' ) );
+		$this->assertSame( array( 'bar' ), wp_cache_get( $users[1], 'bp_member_member_type' ) );
+		$this->assertSame( array( 'foo' ), wp_cache_get( $users[2], 'bp_member_member_type' ) );
+		$this->assertSame( '', wp_cache_get( $users[3], 'bp_member_member_type' ) );
 	}
 }
